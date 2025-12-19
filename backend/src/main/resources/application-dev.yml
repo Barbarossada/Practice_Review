@@ -1,0 +1,5 @@
+# 开发环境配置
+spring:
+  datasource:
+    username: root
+    password: 123456
