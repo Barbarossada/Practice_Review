@@ -10,6 +10,7 @@ import com.exam.mapper.QuestionMapper;
 import com.exam.service.QuestionService;
 import com.exam.service.SubjectService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -28,6 +29,20 @@ public class QuestionServiceImpl extends ServiceImpl<QuestionMapper, Question> i
 
     @Autowired
     private SubjectService subjectService;
+
+    @Autowired
+    private JdbcTemplate jdbcTemplate;
+
+    /**
+     * 重排指定类型的display_order
+     */
+    private void reorderDisplayOrder(String type) {
+        jdbcTemplate.execute("SET @row_num = 0");
+        jdbcTemplate.update(
+            "UPDATE question SET display_order = (@row_num := @row_num + 1) WHERE type = ? ORDER BY display_order",
+            type
+        );
+    }
 
     @Override
     public Page<Question> getQuestionPage(Long page, Long size, String subject, String type, String difficulty) {
@@ -103,12 +118,15 @@ public class QuestionServiceImpl extends ServiceImpl<QuestionMapper, Question> i
             wrapper.eq("type", type);
         }
         
-        // 先统计各科目的删除数量
+        // 先统计各科目的删除数量和涉及的类型
         List<Question> questionsToDelete = this.list(wrapper);
         Map<String, Integer> subjectCountMap = new HashMap<>();
+        java.util.Set<String> typesToReorder = new java.util.HashSet<>();
+        
         for (Question q : questionsToDelete) {
             String subjectName = q.getSubject();
             subjectCountMap.put(subjectName, subjectCountMap.getOrDefault(subjectName, 0) + 1);
+            typesToReorder.add(q.getType());
         }
         
         // 删除符合条件的题目
@@ -119,6 +137,11 @@ public class QuestionServiceImpl extends ServiceImpl<QuestionMapper, Question> i
             // 更新科目表
             for (Map.Entry<String, Integer> entry : subjectCountMap.entrySet()) {
                 subjectService.decrementQuestionCount(entry.getKey(), entry.getValue());
+            }
+            
+            // 重排涉及的所有类型的display_order
+            for (String t : typesToReorder) {
+                reorderDisplayOrder(t);
             }
         }
         
@@ -169,10 +192,13 @@ public class QuestionServiceImpl extends ServiceImpl<QuestionMapper, Question> i
             return false;
         }
         
+        String type = question.getType();
         boolean success = this.removeById(id);
         if (success) {
             // 更新科目表
             subjectService.decrementQuestionCount(question.getSubject(), 1);
+            // 重排该类型的display_order
+            reorderDisplayOrder(type);
         }
         return success;
     }
@@ -184,12 +210,15 @@ public class QuestionServiceImpl extends ServiceImpl<QuestionMapper, Question> i
             return false;
         }
         
-        // 统计各科目的删除数量
+        // 统计各科目的删除数量和涉及的类型
         List<Question> questionsToDelete = this.listByIds(ids);
         Map<String, Integer> subjectCountMap = new HashMap<>();
+        java.util.Set<String> typesToReorder = new java.util.HashSet<>();
+        
         for (Question q : questionsToDelete) {
             String subject = q.getSubject();
             subjectCountMap.put(subject, subjectCountMap.getOrDefault(subject, 0) + 1);
+            typesToReorder.add(q.getType());
         }
         
         boolean success = this.removeByIds(ids);
@@ -197,6 +226,10 @@ public class QuestionServiceImpl extends ServiceImpl<QuestionMapper, Question> i
             // 更新科目表
             for (Map.Entry<String, Integer> entry : subjectCountMap.entrySet()) {
                 subjectService.decrementQuestionCount(entry.getKey(), entry.getValue());
+            }
+            // 重排涉及的所有类型的display_order
+            for (String type : typesToReorder) {
+                reorderDisplayOrder(type);
             }
         }
         return success;

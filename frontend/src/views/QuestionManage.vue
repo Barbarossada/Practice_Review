@@ -223,12 +223,10 @@
         </n-alert>
         
         <n-form-item label="科目名称">
-          <n-select 
+          <n-input 
             v-model:value="importSubject" 
-            :options="subjectOptions.map(opt => ({ label: opt.value, value: opt.value }))"
-            placeholder="请选择或输入科目名称"
-            filterable
-            tag
+            placeholder="请输入科目名称"
+            clearable
           />
         </n-form-item>
 

@@ -81,10 +81,18 @@ public class SubjectServiceImpl extends ServiceImpl<SubjectMapper, Subject> impl
 
     @Override
     public List<Subject> getAllSubjects() {
-        QueryWrapper<Subject> wrapper = new QueryWrapper<>();
-        wrapper.orderByDesc("question_count")
-               .orderByAsc("name");
-        return this.list(wrapper);
+        // 直接根据 question 表实时统计，确保数量准确
+        List<Subject> subjectCounts = questionMapper.selectSubjectCounts();
+
+        // 如果库里还没有题目，退回到已有的科目表
+        if (subjectCounts == null || subjectCounts.isEmpty()) {
+            QueryWrapper<Subject> wrapper = new QueryWrapper<>();
+            wrapper.orderByDesc("question_count")
+                   .orderByAsc("name");
+            return this.list(wrapper);
+        }
+
+        return subjectCounts;
     }
 
     @Override

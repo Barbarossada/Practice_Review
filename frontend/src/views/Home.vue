@@ -102,27 +102,41 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { NCard, NGrid, NGridItem, NIcon, NSpace } from 'naive-ui'
+import { NCard, NGrid, NGridItem, NIcon, NSpace, useMessage } from 'naive-ui'
 import { 
   ListOutline, CreateOutline, BookmarkOutline, StatsChartOutline, 
   SchoolOutline, PlayOutline, FlashOutline, CloudUploadOutline 
 } from '@vicons/ionicons5'
-import { usePracticeStore } from '@/stores/practice'
+import { getStatistics } from '@/api/practice'
 
 const router = useRouter()
-const practiceStore = usePracticeStore()
+const message = useMessage()
 
 const statistics = ref({
-  totalQuestions: 98,
+  totalQuestions: 0,
   practiced: 0,
   wrongCount: 0,
   correctRate: 0
 })
 
+// 加载统计数据
+const loadStatistics = async () => {
+  try {
+    const res = await getStatistics()
+    if (res.code === 200) {
+      statistics.value.totalQuestions = res.data.totalQuestions || 0
+      statistics.value.practiced = res.data.totalPracticeCount || 0
+      statistics.value.wrongCount = res.data.wrongQuestionCount || 0
+      statistics.value.correctRate = parseFloat(res.data.correctRate || 0)
+    }
+  } catch (error) {
+    console.error('加载统计数据失败:', error)
+    message.error('加载统计数据失败')
+  }
+}
+
 onMounted(() => {
-  statistics.value.practiced = practiceStore.totalPracticeCount
-  statistics.value.wrongCount = practiceStore.wrongCount
-  statistics.value.correctRate = practiceStore.correctRate
+  loadStatistics()
 })
 </script>
 

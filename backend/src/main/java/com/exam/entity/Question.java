@@ -27,6 +27,11 @@ public class Question {
     private String type;
 
     /**
+     * 显示顺序（按类型分组，从1开始）
+     */
+    private Integer displayOrder;
+
+    /**
      * 科目
      */
     private String subject;

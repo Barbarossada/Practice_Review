@@ -32,6 +32,14 @@
           </n-tag>
         </div>
 
+        <n-form-item v-if="fileName" label="科目名称">
+          <n-input
+            v-model:value="subjectName"
+            placeholder="请输入科目名称"
+            clearable
+          />
+        </n-form-item>
+
         <div v-if="parseResult" class="parse-result">
           <n-card title="解析结果" size="small">
             <n-space vertical>
@@ -41,6 +49,18 @@
             </n-space>
           </n-card>
         </div>
+
+        <n-form-item v-if="parseResult" label="文件名称">
+          <n-input
+            v-model:value="exportFileName"
+            placeholder="请输入文件名（无需后缀）"
+            clearable
+          >
+            <template #suffix>
+              .xlsx
+            </template>
+          </n-input>
+        </n-form-item>
 
         <n-button
           v-if="parseResult"
@@ -62,7 +82,7 @@
 
 <script setup>
 import { ref } from 'vue'
-import { useMessage, NCard, NSpace, NAlert, NUpload, NButton, NIcon, NTag, NStatistic } from 'naive-ui'
+import { useMessage, NCard, NSpace, NAlert, NUpload, NButton, NIcon, NTag, NStatistic, NFormItem, NInput } from 'naive-ui'
 import { DocumentTextOutline, CheckmarkCircle, DownloadOutline } from '@vicons/ionicons5'
 import * as XLSX from 'xlsx'
 
@@ -71,6 +91,8 @@ const fileName = ref('')
 const fileContent = ref('')
 const parseResult = ref(null)
 const converting = ref(false)
+const exportFileName = ref('题库')
+const subjectName = ref('未分类')
 
 const handleFileSelect = (options) => {
   const file = options.file.file
@@ -91,14 +113,33 @@ const parseQuestions = () => {
     const content = fileContent.value
     
     // 分离题目和答案部分
-    const answerStartIndex = content.lastIndexOf('\n1-5')
+    // 答案通常在文件末尾，格式如 "1-5 A B C D E" 或 "1-5 ABCDE"
+    // 查找答案开始的位置（匹配 数字-数字 格式）
+    const lines = content.split('\n')
+    let answerStartLineIndex = -1
+    
+    // 从后往前找答案行
+    for (let i = lines.length - 1; i >= 0; i--) {
+      const line = lines[i].trim()
+      // 答案行特征：包含 "数字-数字" 格式且后面跟着字母答案
+      if (/^\d+-\d+\s+[A-E\s]+/.test(line) || /\d+-\d+\s+[A-E]/.test(line)) {
+        answerStartLineIndex = i
+      } else if (answerStartLineIndex !== -1 && line && !/^\d+-\d+/.test(line)) {
+        // 找到了非答案行，停止
+        break
+      }
+    }
+    
     let questionPart = content
     let answerPart = ''
     
-    if (answerStartIndex > 0) {
-      questionPart = content.substring(0, answerStartIndex)
-      answerPart = content.substring(answerStartIndex)
+    if (answerStartLineIndex > 0) {
+      questionPart = lines.slice(0, answerStartLineIndex).join('\n')
+      answerPart = lines.slice(answerStartLineIndex).join('\n')
     }
+    
+    console.log('题目部分行数:', questionPart.split('\n').length)
+    console.log('答案部分:', answerPart)
     
     // 解析题目
     const { choiceQuestions, judgeQuestions } = parseQuestionText(questionPart)
@@ -157,7 +198,7 @@ const parseQuestionText = (content) => {
         num: parseInt(questionMatch[1]),
         content: questionMatch[2].trim(),
         options: {},
-        subject: '习思想',
+        subject: subjectName.value || '未分类',
         difficulty: 'medium'
       }
       continue
@@ -188,63 +229,35 @@ const parseQuestionText = (content) => {
 
 const parseAnswers = (answerText) => {
   const answers = {}
-  const lines = answerText.trim().split('\n')
+  if (!answerText || !answerText.trim()) return answers
   
-  for (const line of lines) {
-    const trimmed = line.trim()
-    if (!trimmed) continue
+  console.log('解析答案文本:', answerText)
+  
+  // 将所有内容合并成一行处理，方便解析
+  const allText = answerText.replace(/\n/g, ' ').replace(/\s+/g, ' ').trim()
+  console.log('合并后:', allText)
+  
+  // 匹配所有 "数字-数字 答案..." 的模式
+  // 例如: "1-5 D A B C D" 或 "6-10 A C A C C"
+  const rangePattern = /(\d+)-(\d+)\s+([A-E\s]+?)(?=\d+-\d+|$)/g
+  let match
+  
+  while ((match = rangePattern.exec(allText)) !== null) {
+    const start = parseInt(match[1])
+    const end = parseInt(match[2])
+    const answersStr = match[3].trim()
     
-    const parts = trimmed.split(/\s+/)
+    // 提取答案字母
+    const answerLetters = answersStr.split(/\s+/).filter(a => /^[A-E]+$/.test(a))
+    console.log(`范围 ${start}-${end}, 答案:`, answerLetters)
     
-    let i = 0
-    while (i < parts.length) {
-      const part = parts[i]
-      
-      if (part.includes('-')) {
-        const dashPos = part.indexOf('-')
-        const startStr = part.substring(0, dashPos)
-        const afterDash = part.substring(dashPos + 1)
-        
-        // 提取数字部分作为end
-        let endStr = ''
-        let firstAnswer = ''
-        for (const char of afterDash) {
-          if (/\d/.test(char)) {
-            endStr += char
-          } else {
-            firstAnswer = afterDash.substring(endStr.length)
-            break
-          }
-        }
-        
-        if (!endStr) {
-          i++
-          continue
-        }
-        
-        const start = parseInt(startStr)
-        const end = parseInt(endStr)
-        
-        i++
-        let collected = 0
-        
-        if (firstAnswer) {
-          answers[start] = firstAnswer
-          collected = 1
-        }
-        
-        while (i < parts.length && collected < (end - start + 1)) {
-          if (parts[i].includes('-')) break
-          answers[start + collected] = parts[i]
-          collected++
-          i++
-        }
-      } else {
-        i++
-      }
+    // 分配答案
+    for (let j = 0; j < answerLetters.length && (start + j) <= end; j++) {
+      answers[start + j] = answerLetters[j]
     }
   }
   
+  console.log('解析出的答案:', answers)
   return answers
 }
 
@@ -329,8 +342,9 @@ const convertToExcel = () => {
     }
     
     // 生成文件名
+    const customName = exportFileName.value.trim() || '题库'
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19)
-    const filename = `习思想题库_${timestamp}.xlsx`
+    const filename = `${customName}_${timestamp}.xlsx`
     
     // 下载文件
     XLSX.writeFile(wb, filename)

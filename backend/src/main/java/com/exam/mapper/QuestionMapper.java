@@ -23,4 +23,10 @@ public interface QuestionMapper extends BaseMapper<Question> {
      */
     @Select("SELECT DISTINCT subject FROM question ORDER BY subject")
     List<String> selectDistinctSubjects();
+
+    /**
+     * 按科目统计题目数量
+     */
+    @Select("SELECT subject AS name, COUNT(*) AS questionCount FROM question GROUP BY subject ORDER BY questionCount DESC, subject ASC")
+    List<com.exam.entity.Subject> selectSubjectCounts();
 }

@@ -216,7 +216,7 @@ const subjectOptions = ref([
   { label: '全部科目', value: null }
 ])
 
-// 加载科目列表
+// 加载科目列表（保持纯查询，避免后端未启动时报错）
 const loadSubjects = async () => {
   try {
     const res = await getAllSubjects()
