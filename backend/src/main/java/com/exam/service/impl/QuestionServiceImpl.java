@@ -34,13 +34,13 @@ public class QuestionServiceImpl extends ServiceImpl<QuestionMapper, Question> i
     private JdbcTemplate jdbcTemplate;
 
     /**
-     * 重排指定类型的display_order
+     * 重排指定科目+类型的display_order
      */
-    private void reorderDisplayOrder(String type) {
+    private void reorderDisplayOrder(String subject, String type) {
         jdbcTemplate.execute("SET @row_num = 0");
         jdbcTemplate.update(
-            "UPDATE question SET display_order = (@row_num := @row_num + 1) WHERE type = ? ORDER BY display_order",
-            type
+            "UPDATE question SET display_order = (@row_num := @row_num + 1) WHERE subject = ? AND type = ? ORDER BY display_order",
+            subject, type
         );
     }
 
@@ -79,37 +79,50 @@ public class QuestionServiceImpl extends ServiceImpl<QuestionMapper, Question> i
 
     @Override
     public Question getRandomQuestion(String subject, String type, String difficulty) {
+        System.out.println("======= QuestionService.getRandomQuestion =======");
+        System.out.println("参数: subject='" + subject + "', type='" + type + "', difficulty='" + difficulty + "'");
+        
         QueryWrapper<Question> wrapper = new QueryWrapper<>();
 
         // 构建查询条件
         if (StrUtil.isNotBlank(subject)) {
+            System.out.println("添加subject条件: " + subject);
             wrapper.eq("subject", subject);
         }
         if (StrUtil.isNotBlank(type)) {
+            System.out.println("添加type条件: " + type);
             wrapper.eq("type", type);
         }
         if (StrUtil.isNotBlank(difficulty)) {
+            System.out.println("添加difficulty条件: " + difficulty);
             wrapper.eq("difficulty", difficulty);
         }
 
         // 获取符合条件的题目数量
         long count = this.count(wrapper);
+        System.out.println("符合条件的题目数量: " + count);
         if (count == 0) {
             return null;
         }
 
         // 随机偏移量
         int offset = RandomUtil.randomInt(0, (int) count);
+        System.out.println("随机偏移量: " + offset);
         wrapper.last("LIMIT 1 OFFSET " + offset);
 
-        return this.getOne(wrapper);
+        Question result = this.getOne(wrapper);
+        if (result != null) {
+            System.out.println("返回题目: ID=" + result.getId() + ", subject='" + result.getSubject() + "', type='" + result.getType() + "', content='" + result.getContent().substring(0, Math.min(50, result.getContent().length())) + "...'");
+        }
+        System.out.println("===========================================");
+        return result;
     }
 
     @Override
     @Transactional
     public int clearAll(String subject, String type) {
         QueryWrapper<Question> wrapper = new QueryWrapper<>();
-        
+
         // 构建查询条件
         if (StrUtil.isNotBlank(subject)) {
             wrapper.eq("subject", subject);
@@ -117,34 +130,40 @@ public class QuestionServiceImpl extends ServiceImpl<QuestionMapper, Question> i
         if (StrUtil.isNotBlank(type)) {
             wrapper.eq("type", type);
         }
-        
-        // 先统计各科目的删除数量和涉及的类型
+
+        // 先统计各科目和类型的删除数量
         List<Question> questionsToDelete = this.list(wrapper);
         Map<String, Integer> subjectCountMap = new HashMap<>();
-        java.util.Set<String> typesToReorder = new java.util.HashSet<>();
-        
+        Map<String, java.util.Set<String>> subjectTypeMap = new HashMap<>();
+
         for (Question q : questionsToDelete) {
             String subjectName = q.getSubject();
+            String typeName = q.getType();
+
             subjectCountMap.put(subjectName, subjectCountMap.getOrDefault(subjectName, 0) + 1);
-            typesToReorder.add(q.getType());
+
+            subjectTypeMap.computeIfAbsent(subjectName, k -> new java.util.HashSet<>()).add(typeName);
         }
-        
+
         // 删除符合条件的题目
         int count = questionsToDelete.size();
         if (count > 0) {
             this.remove(wrapper);
-            
+
             // 更新科目表
             for (Map.Entry<String, Integer> entry : subjectCountMap.entrySet()) {
                 subjectService.decrementQuestionCount(entry.getKey(), entry.getValue());
             }
-            
-            // 重排涉及的所有类型的display_order
-            for (String t : typesToReorder) {
-                reorderDisplayOrder(t);
+
+            // 重排涉及的所有科目+类型组合的display_order
+            for (Map.Entry<String, java.util.Set<String>> entry : subjectTypeMap.entrySet()) {
+                String subjectName = entry.getKey();
+                for (String typeName : entry.getValue()) {
+                    reorderDisplayOrder(subjectName, typeName);
+                }
             }
         }
-        
+
         return count;
     }
 
@@ -198,7 +217,7 @@ public class QuestionServiceImpl extends ServiceImpl<QuestionMapper, Question> i
             // 更新科目表
             subjectService.decrementQuestionCount(question.getSubject(), 1);
             // 重排该类型的display_order
-            reorderDisplayOrder(type);
+            reorderDisplayOrder(question.getSubject(), type);
         }
         return success;
     }
@@ -227,9 +246,11 @@ public class QuestionServiceImpl extends ServiceImpl<QuestionMapper, Question> i
             for (Map.Entry<String, Integer> entry : subjectCountMap.entrySet()) {
                 subjectService.decrementQuestionCount(entry.getKey(), entry.getValue());
             }
-            // 重排涉及的所有类型的display_order
             for (String type : typesToReorder) {
-                reorderDisplayOrder(type);
+                // 为每个涉及的科目和类型组合重排
+                for (String subject : subjectCountMap.keySet()) {
+                    reorderDisplayOrder(subject, type);
+                }
             }
         }
         return success;

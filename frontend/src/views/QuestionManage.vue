@@ -1,107 +1,121 @@
 <template>
-  <n-space vertical :size="16">
-    <!-- 操作栏 -->
-    <n-card :bordered="false">
-      <n-space justify="space-between">
-        <n-space>
-          <n-button type="primary" @click="showAddModal = true">
-            <template #icon>
-              <n-icon :component="AddOutline" />
-            </template>
-            新增题目
-          </n-button>
-          <n-button @click="showImportModal = true">
-            <template #icon>
-              <n-icon :component="CloudUploadOutline" />
-            </template>
-            导入Excel
-          </n-button>
-          <n-button @click="handleExport">
-            <template #icon>
-              <n-icon :component="CloudDownloadOutline" />
-            </template>
-            导出Excel
-          </n-button>
-          <n-popconfirm
-            @positive-click="handleBatchDelete"
-            :disabled="checkedRowKeys.length === 0"
-          >
-            <template #trigger>
-              <n-button
-                type="warning"
-                :disabled="checkedRowKeys.length === 0"
-              >
+  <div class="manage-container">
+    <n-space vertical :size="24">
+      <!-- 顶部操作栏 -->
+      <n-card :bordered="false" class="action-card">
+        <div class="action-header">
+          <div class="left-actions">
+            <n-button type="primary" size="medium" class="add-btn" @click="showAddModal = true">
+              <template #icon>
+                <n-icon :component="AddOutline" />
+              </template>
+              新增题目
+            </n-button>
+            <n-button-group>
+              <n-button size="medium" @click="showImportModal = true">
                 <template #icon>
-                  <n-icon :component="TrashOutline" />
+                  <n-icon :component="CloudUploadOutline" />
                 </template>
-                批量删除 {{ checkedRowKeys.length > 0 ? `(${checkedRowKeys.length})` : '' }}
+                导入
               </n-button>
-            </template>
-            确定删除选中的 {{ checkedRowKeys.length }} 道题目吗？
-          </n-popconfirm>
-          <n-button type="error" @click="showClearModal = true">
-            <template #icon>
-              <n-icon :component="TrashOutline" />
-            </template>
-            清空题库
-          </n-button>
-        </n-space>
+              <n-button size="medium" @click="handleExport">
+                <template #icon>
+                  <n-icon :component="CloudDownloadOutline" />
+                </template>
+                导出
+              </n-button>
+            </n-button-group>
+            
+            <n-popconfirm
+              @positive-click="handleBatchDelete"
+              :disabled="checkedRowKeys.length === 0"
+            >
+              <template #trigger>
+                <n-button
+                  type="error"
+                  ghost
+                  size="medium"
+                  :disabled="checkedRowKeys.length === 0"
+                  class="batch-delete-btn"
+                >
+                  <template #icon>
+                    <n-icon :component="TrashOutline" />
+                  </template>
+                  批量删除 {{ checkedRowKeys.length > 0 ? `(${checkedRowKeys.length})` : '' }}
+                </n-button>
+              </template>
+              确定删除选中的 {{ checkedRowKeys.length }} 道题目吗？
+            </n-popconfirm>
+          </div>
 
-        <n-space>
-          <n-select
-            v-model:value="filters.subject"
-            placeholder="选择科目"
-            clearable
-            style="width: 150px"
-            :options="subjectOptions"
-            @update:value="handleFilterChange"
-          />
-          <n-select
-            v-model:value="filters.type"
-            placeholder="选择题型"
-            clearable
-            style="width: 150px"
-            :options="typeOptions"
-            @update:value="handleFilterChange"
-          />
-          <n-input
-            v-model:value="filters.keyword"
-            placeholder="搜索题目"
-            clearable
-            style="width: 200px"
-            @keyup.enter="handleFilterChange"
-          >
-            <template #prefix>
-              <n-icon :component="SearchOutline" />
-            </template>
-          </n-input>
-        </n-space>
-      </n-space>
-    </n-card>
+          <div class="right-filters">
+            <n-input
+              v-model:value="filters.keyword"
+              placeholder="搜索题目内容..."
+              clearable
+              size="medium"
+              class="search-input"
+              @keyup.enter="handleFilterChange"
+            >
+              <template #prefix>
+                <n-icon :component="SearchOutline" class="search-icon" />
+              </template>
+            </n-input>
+            
+            <n-select
+              v-model:value="filters.subject"
+              placeholder="全部科目"
+              clearable
+              size="medium"
+              class="filter-select"
+              :options="subjectOptions"
+              @update:value="handleFilterChange"
+            />
+            <n-select
+              v-model:value="filters.type"
+              placeholder="所有题型"
+              clearable
+              size="medium"
+              class="filter-select"
+              :options="typeOptions"
+              @update:value="handleFilterChange"
+            />
+            
+            <n-button text type="error" @click="showClearModal = true" class="clear-all-btn">
+              <template #icon><n-icon :component="TrashOutline"/></template>
+              清空
+            </n-button>
+          </div>
+        </div>
+      </n-card>
 
-    <!-- 题目列表 -->
-    <n-card :bordered="false">
-      <n-data-table
-        :columns="columns"
-        :data="questions"
-        :loading="loading"
-        :pagination="paginationReactive"
-        :bordered="false"
-        :row-key="(row) => row.id"
-        v-model:checked-row-keys="checkedRowKeys"
-        @update:page="handlePageChange"
-        @update:page-size="handlePageSizeChange"
-      />
-    </n-card>
+      <!-- 题目列表 -->
+      <n-card :bordered="false" class="table-card" content-style="padding: 0;">
+        <n-data-table
+          :columns="columns"
+          :data="questions"
+          :loading="loading"
+          :pagination="paginationReactive"
+          :remote="true"
+          :bordered="false"
+          :row-key="(row) => row.id"
+          v-model:checked-row-keys="checkedRowKeys"
+          @update:page="handlePageChange"
+          @update:page-size="handlePageSizeChange"
+          striped
+          class="custom-table"
+        />
+      </n-card>
+    </n-space>
 
     <!-- 清空题库对话框 -->
     <n-modal v-model:show="showClearModal" preset="dialog" title="清空题库" style="width: 500px">
       <n-space vertical :size="16">
-        <n-alert type="warning" title="警告">
-          此操作不可恢复，请谨慎选择！
+        <n-alert type="warning" title="危险操作">
+          此操作将永久删除题目，不可恢复，请谨慎选择！
         </n-alert>
         
-        <n-form label-placement="left" label-width="80px">
+        <n-form label-placement="left" label-width="80px" class="modal-form">
           <n-form-item label="清空范围">
             <n-radio-group v-model:value="clearOptions.mode">
               <n-space vertical>
@@ -113,27 +127,28 @@
             </n-radio-group>
           </n-form-item>
 
-          <n-form-item v-if="clearOptions.mode === 'bySubject' || clearOptions.mode === 'custom'" label="科目">
+          <n-form-item v-if="clearOptions.mode === 'bySubject' || clearOptions.mode === 'custom'" label="选择科目">
             <n-select
               v-model:value="clearOptions.subject"
-              placeholder="选择科目"
+              placeholder="请选择科目"
               clearable
               :options="subjectOptions"
             />
           </n-form-item>
 
-          <n-form-item v-if="clearOptions.mode === 'byType' || clearOptions.mode === 'custom'" label="题型">
+          <n-form-item v-if="clearOptions.mode === 'byType' || clearOptions.mode === 'custom'" label="选择题型">
             <n-select
               v-model:value="clearOptions.type"
-              placeholder="选择题型"
+              placeholder="请选择题型"
               clearable
               :options="typeOptions"
             />
           </n-form-item>
         </n-form>
 
-        <n-card v-if="clearPreview" size="small" title="预计清空">
-          <n-text type="error" strong>
+        <n-card v-if="clearPreview" size="small" :bordered="false" class="preview-card">
+          <n-text type="error">
+            <n-icon :component="TrashOutline" style="margin-right: 4px; vertical-align: bottom;" />
             {{ clearPreview }}
           </n-text>
         </n-card>
@@ -148,21 +163,26 @@
     </n-modal>
 
     <!-- 新增/编辑对话框 -->
-    <n-modal v-model:show="showAddModal" preset="dialog" :title="editingQuestion ? '编辑题目' : '新增题目'" style="width: 700px">
-      <n-form ref="formRef" :model="formData" :rules="rules" label-placement="left" label-width="80px">
-        <n-form-item label="题型" path="type">
-          <n-select v-model:value="formData.type" :options="typeOptions" placeholder="选择题型" />
-        </n-form-item>
-        
-        <n-form-item label="科目" path="subject">
-          <n-select 
-            v-model:value="formData.subject" 
-            :options="subjectOptions.map(opt => ({ label: opt.value, value: opt.value }))"
-            placeholder="请选择或输入科目"
-            filterable
-            tag
-          />
-        </n-form-item>
+    <n-modal v-model:show="showAddModal" preset="card" :title="editingQuestion ? '编辑题目' : '新增题目'" style="width: 700px" class="custom-modal">
+      <n-form ref="formRef" :model="formData" :rules="rules" label-placement="left" label-width="80px" size="large">
+        <n-grid :cols="2" :x-gap="24">
+           <n-grid-item>
+              <n-form-item label="科目" path="subject">
+                <n-select 
+                  v-model:value="formData.subject" 
+                  :options="subjectOptions.map(opt => ({ label: opt.value, value: opt.value }))"
+                  placeholder="选择或输入科目"
+                  filterable
+                  tag
+                />
+              </n-form-item>
+           </n-grid-item>
+           <n-grid-item>
+              <n-form-item label="题型" path="type">
+                <n-select v-model:value="formData.type" :options="typeOptions" placeholder="选择题型" />
+              </n-form-item>
+           </n-grid-item>
+        </n-grid>
 
         <n-form-item label="题目" path="content">
           <n-input
@@ -173,60 +193,64 @@
           />
         </n-form-item>
 
-          <n-form-item v-if="formData.type === 'single-choice' || formData.type === 'multiple-choice' || formData.type === 'choice'" label="选项A" path="optionA">
-          <n-input v-model:value="formData.optionA" placeholder="请输入选项A" />
-        </n-form-item>
+        <n-grid :cols="2" :x-gap="24" v-if="['single-choice', 'multiple-choice', 'choice'].includes(formData.type)">
+          <n-grid-item>
+            <n-form-item label="选项A" path="optionA"><n-input v-model:value="formData.optionA" placeholder="选项A" /></n-form-item>
+          </n-grid-item>
+          <n-grid-item>
+            <n-form-item label="选项B" path="optionB"><n-input v-model:value="formData.optionB" placeholder="选项B" /></n-form-item>
+          </n-grid-item>
+          <n-grid-item>
+            <n-form-item label="选项C" path="optionC"><n-input v-model:value="formData.optionC" placeholder="选项C" /></n-form-item>
+          </n-grid-item>
+          <n-grid-item>
+            <n-form-item label="选项D" path="optionD"><n-input v-model:value="formData.optionD" placeholder="选项D" /></n-form-item>
+          </n-grid-item>
+        </n-grid>
 
-          <n-form-item v-if="formData.type === 'single-choice' || formData.type === 'multiple-choice' || formData.type === 'choice'" label="选项B" path="optionB">
-          <n-input v-model:value="formData.optionB" placeholder="请输入选项B" />
-        </n-form-item>
-
-          <n-form-item v-if="formData.type === 'single-choice' || formData.type === 'multiple-choice' || formData.type === 'choice'" label="选项C" path="optionC">
-          <n-input v-model:value="formData.optionC" placeholder="请输入选项C" />
-        </n-form-item>
-
-          <n-form-item v-if="formData.type === 'single-choice' || formData.type === 'multiple-choice' || formData.type === 'choice'" label="选项D" path="optionD">
-          <n-input v-model:value="formData.optionD" placeholder="请输入选项D" />
-        </n-form-item>
-
-        <n-form-item label="答案" path="answer">
-          <n-input v-model:value="formData.answer" placeholder="选择题填字母(A/B/C/D)，判断题填'正确'或'错误'" />
-        </n-form-item>
+        <n-grid :cols="2" :x-gap="24">
+          <n-grid-item>
+             <n-form-item label="答案" path="answer">
+              <n-input v-model:value="formData.answer" placeholder="A/B/C/D 或 '正确'/'错误'" />
+            </n-form-item>
+          </n-grid-item>
+          <n-grid-item>
+            <n-form-item label="难度" path="difficulty">
+              <n-select v-model:value="formData.difficulty" :options="difficultyOptions" />
+            </n-form-item>
+          </n-grid-item>
+        </n-grid>
 
         <n-form-item label="解析" path="analysis">
           <n-input
             v-model:value="formData.analysis"
             type="textarea"
-            placeholder="请输入答案解析（选填）"
+            placeholder="输入答案解析..."
             :rows="2"
           />
         </n-form-item>
-
-        <n-form-item label="难度" path="difficulty">
-          <n-select v-model:value="formData.difficulty" :options="difficultyOptions" />
-        </n-form-item>
       </n-form>
 
-      <template #action>
+      <template #footer>
         <n-space justify="end">
-          <n-button @click="showAddModal = false">取消</n-button>
-          <n-button type="primary" @click="handleSubmit">确定</n-button>
+          <n-button @click="showAddModal = false" size="large">取消</n-button>
+          <n-button type="primary" @click="handleSubmit" size="large">保存题目</n-button>
         </n-space>
       </template>
     </n-modal>
 
     <!-- 导入对话框 -->
     <n-modal v-model:show="showImportModal" preset="dialog" title="导入Excel题库" style="width: 500px">
-      <n-space vertical :size="16">
-        <n-alert type="info" title="导入说明">
-          请选择Excel文件并指定科目名称，所有导入的题目将归类到指定科目下。
+      <div class="import-container">
+        <n-alert type="info" :show-icon="false" class="import-alert">
+          <p>请选择Excel文件并指定科目名称，所有导入的题目将归类到指定科目下。</p>
         </n-alert>
         
-        <n-form-item label="科目名称">
+        <n-form-item label="归属科目" class="mt-4">
           <n-input 
             v-model:value="importSubject" 
-            placeholder="请输入科目名称"
-            clearable
+            placeholder="归属科目 (留空则使用文件原有科目)"
+            size="large"
           />
         </n-form-item>
 
@@ -236,30 +260,28 @@
           accept=".xlsx,.xls,.csv"
           :custom-request="handleImportFile"
           @before-upload="beforeUpload"
+          class="import-upload"
         >
-          <n-button block>
-            <template #icon>
-              <n-icon :component="CloudUploadOutline" />
-            </template>
-            选择文件
-          </n-button>
+          <n-upload-dragger>
+            <div style="margin-bottom: 12px">
+              <n-icon size="48" :depth="3" :component="CloudUploadOutline" />
+            </div>
+            <n-text style="font-size: 16px">
+              点击或拖拽文件到此处
+            </n-text>
+          </n-upload-dragger>
         </n-upload>
-      </n-space>
-
-      <template #action>
-        <n-space justify="end">
-          <n-button @click="showImportModal = false">取消</n-button>
-        </n-space>
-      </template>
+      </div>
     </n-modal>
-  </n-space>
+  </div>
 </template>
 
 <script setup>
 import { ref, h, onMounted, reactive, computed } from 'vue'
 import {
   NSpace, NCard, NButton, NIcon, NUpload, NSelect, NInput, NDataTable,
-  NModal, NForm, NFormItem, NTag, NPopconfirm, NRadioGroup, NRadio, NAlert, NText, useMessage
+  NModal, NForm, NFormItem, NTag, NPopconfirm, NRadioGroup, NRadio, NAlert, NText, useMessage,
+  NButtonGroup, NGrid, NGridItem, NUploadDragger
 } from 'naive-ui'
 import {
   AddOutline, CloudUploadOutline, CloudDownloadOutline, SearchOutline,
@@ -336,18 +358,17 @@ const paginationReactive = computed(() => ({
   itemCount: totalCount.value,
   showSizePicker: true,
   pageSizes: [10, 20, 50, 100],
-  prefix: ({ itemCount }) => `共 ${itemCount} 条`
+  prefix: ({ itemCount }) => `共 ${itemCount} 条`,
+  showQuickJumper: true
 }))
 
 // 分页改变处理
 const handlePageChange = (page) => {
-  console.log('分页改变:', page)
   currentPage.value = page
   loadQuestions()
 }
 
 const handlePageSizeChange = (pageSize) => {
-  console.log('每页条数改变:', pageSize)
   currentPageSize.value = pageSize
   currentPage.value = 1
   loadQuestions()
@@ -355,7 +376,6 @@ const handlePageSizeChange = (pageSize) => {
 
 // 筛选条件改变处理
 const handleFilterChange = () => {
-  console.log('筛选条件改变:', filters)
   currentPage.value = 1  // 重置到第一页
   loadQuestions()
 }
@@ -425,11 +445,12 @@ const difficultyOptions = [
 // 表格列定义
 const columns = [
   { type: 'selection' },
-  { title: 'ID', key: 'id', width: 80 },
+  { title: 'ID', key: 'id', width: 70, align: 'center' },
   {
     title: '题型',
     key: 'type',
     width: 100,
+    align: 'center',
     render: (row) => {
       const typeMap = {
         'single-choice': { type: 'info', text: '单选题' },
@@ -439,45 +460,62 @@ const columns = [
       }
       const config = typeMap[row.type] || { type: 'default', text: row.type }
       return h(NTag, 
-        { type: config.type, size: 'small' },
+        { type: config.type, size: 'small', round: true, bordered: false },
         { default: () => config.text }
       )
     }
   },
-  { title: '科目', key: 'subject', width: 100 },
-  { title: '题目内容', key: 'content', ellipsis: { tooltip: true } },
-  { title: '答案', key: 'answer', width: 100 },
+  { 
+    title: '科目', 
+    key: 'subject', 
+    width: 120,
+    render: (row) => h(NTag, { size: 'small', bordered: true, style: { color: '#666' } }, { default: () => row.subject }) 
+  },
+  { 
+     title: '题目内容', 
+     key: 'content', 
+     ellipsis: { tooltip: true },
+     render: (row) => h('span', { style: { fontWeight: '500' } }, row.content)
+  },
+  { 
+     title: '答案', 
+     key: 'answer', 
+     width: 80,
+     align: 'center',
+     render: (row) => h(NText, { type: 'success', strong: true }, { default: () => row.answer }) 
+  },
   {
     title: '难度',
     key: 'difficulty',
-    width: 100,
+    width: 80,
+    align: 'center',
     render: (row) => {
       const typeMap = {
-        easy: { type: 'success', text: '简单' },
-        medium: { type: 'warning', text: '中等' },
-        hard: { type: 'error', text: '困难' }
+        easy: { color: '#10b981', text: '简单' },
+        medium: { color: '#f59e0b', text: '中等' },
+        hard: { color: '#ef4444', text: '困难' }
       }
       const config = typeMap[row.difficulty] || typeMap.medium
-      return h(NTag, { type: config.type, size: 'small' }, { default: () => config.text })
+      return h('span', { style: { color: config.color, fontSize: '13px' } }, config.text)
     }
   },
   {
     title: '操作',
     key: 'actions',
-    width: 180,
+    width: 150,
+    align: 'center',
     render: (row) => {
-      return h(NSpace, null, {
+      return h(NSpace, { justify: 'center' }, {
         default: () => [
           h(
             NButton,
             {
               size: 'small',
+              quaternary: true,
+              type: 'primary',
               onClick: () => handleEdit(row)
             },
-            {
-              default: () => '编辑',
-              icon: () => h(NIcon, null, { default: () => h(CreateOutline) })
-            }
+            { default: () => '编辑' }
           ),
           h(
             NPopconfirm,
@@ -491,12 +529,10 @@ const columns = [
                   NButton,
                   {
                     size: 'small',
+                    quaternary: true,
                     type: 'error'
                   },
-                  {
-                    default: () => '删除',
-                    icon: () => h(NIcon, null, { default: () => h(TrashOutline) })
-                  }
+                  { default: () => '删除' }
                 )
             }
           )
@@ -519,13 +555,12 @@ const loadQuestions = async () => {
     if (filters.type) params.type = filters.type
     if (filters.keyword) params.keyword = filters.keyword
     
-    console.log('loadQuestions params:', params)
+    //console.log('loadQuestions params:', params)
     
     const res = await getQuestionList(params)
     questions.value = res.data.records
     totalCount.value = res.data.total
     
-    console.log('loadQuestions result:', res.data)
   } catch (error) {
     console.error('加载题目失败', error)
     message.error('加载题目失败')
@@ -578,7 +613,7 @@ const handleSubmit = async () => {
     const data = { ...formData }
     
     // 处理选项
-    if (data.type === 'choice') {
+    if (data.type === 'single-choice' || data.type === 'multiple-choice' || data.type === 'choice') {
       const options = []
       if (data.optionA) options.push(`A:${data.optionA}`)
       if (data.optionB) options.push(`B:${data.optionB}`)
@@ -586,13 +621,13 @@ const handleSubmit = async () => {
       if (data.optionD) options.push(`D:${data.optionD}`)
       // 后端期望的是数组，不是 JSON 字符串
       data.options = options
-      
-      // 删除单独的选项字段
-      delete data.optionA
-      delete data.optionB
-      delete data.optionC
-      delete data.optionD
     }
+    
+    // 删除单独的选项字段
+    delete data.optionA
+    delete data.optionB
+    delete data.optionC
+    delete data.optionD
     
     if (editingQuestion.value) {
       await updateQuestion(editingQuestion.value.id, data)
@@ -615,7 +650,7 @@ const handleSubmit = async () => {
 const resetForm = () => {
   editingQuestion.value = null
   Object.assign(formData, {
-    type: 'choice',
+    type: 'single-choice',
     subject: '',
     content: '',
     optionA: '',
@@ -631,7 +666,7 @@ const resetForm = () => {
 // 导入前验证
 const beforeUpload = ({ file }) => {
   if (!importSubject.value || importSubject.value.trim() === '') {
-    message.error('请先选择或输入科目名称')
+    message.error('请先输入科目名称')
     return false
   }
   return true
@@ -640,7 +675,7 @@ const beforeUpload = ({ file }) => {
 // 导入Excel
 const handleImportFile = async ({ file }) => {
   if (!importSubject.value || importSubject.value.trim() === '') {
-    message.error('请先选择或输入科目名称')
+    message.error('请先输入科目名称')
     return
   }
 
@@ -728,3 +763,75 @@ onMounted(() => {
   loadQuestions()
 })
 </script>
+
+<style scoped>
+.manage-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding-bottom: 40px;
+}
+
+.action-card {
+  border-radius: 16px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.03);
+  margin-bottom: 24px;
+}
+
+.action-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 20px;
+}
+
+.left-actions {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.right-filters {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.search-input {
+  width: 200px;
+}
+
+.filter-select {
+  width: 140px;
+}
+
+.add-btn {
+  font-weight: 600;
+  box-shadow: 0 4px 10px rgba(16, 185, 129, 0.2);
+}
+
+.table-card {
+  border-radius: 16px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.02);
+  overflow: hidden;
+}
+
+.custom-table :deep(.n-data-table-th) {
+  background-color: #f8fafc;
+  font-weight: 600;
+  color: #475569;
+}
+
+.import-container {
+  padding: 10px;
+}
+.import-alert {
+  margin-bottom: 20px;
+}
+.mt-4 {
+  margin-top: 16px;
+}
+.preview-card {
+  background: #fef2f2;
+}
+</style>

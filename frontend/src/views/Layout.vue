@@ -4,7 +4,7 @@
       bordered
       collapse-mode="width"
       :collapsed-width="64"
-      :width="220"
+      :width="240"
       :collapsed="collapsed"
       show-trigger
       @collapse="collapsed = true"
@@ -12,8 +12,12 @@
       class="custom-sider"
     >
       <div class="logo-container" :class="{ collapsed: collapsed }">
-        <n-icon :component="SchoolOutline" size="32" color="#18a058" />
-        <span v-if="!collapsed" class="logo-text">复习题库</span>
+        <div class="logo-icon-bg">
+          <n-icon :component="SchoolOutline" size="24" color="#fff" />
+        </div>
+        <transition name="fade">
+          <span v-if="!collapsed" class="logo-text">复习题库</span>
+        </transition>
       </div>
       
       <n-menu
@@ -23,30 +27,35 @@
         :options="menuOptions"
         :value="activeKey"
         @update:value="handleMenuSelect"
+        class="custom-menu"
       />
     </n-layout-sider>
 
     <n-layout>
       <n-layout-header class="custom-header">
         <n-space align="center" justify="space-between" style="width: 100%">
-          <n-space align="center">
+          <n-space align="center" :size="16">
             <n-text class="page-title">
               {{ currentRouteName }}
             </n-text>
-          </n-space>
-          <n-space align="center">
-            <n-tag type="success" round size="small">
+            <n-tag v-if="currentRouteName === '在线练习'" type="primary" size="small" round bordered>
               <template #icon><n-icon :component="CheckmarkCircleOutline" /></template>
-              备考模式
+              专注模式
             </n-tag>
-            <n-avatar round size="small" style="background-color: #18a058">学</n-avatar>
+          </n-space>
+          <n-space align="center" :size="24">
+            <div class="user-profile">
+               <n-avatar round size="small" color="#10b981" style="color: white; font-weight: bold;">学</n-avatar>
+               <span class="username">同学</span>
+            </div>
           </n-space>
         </n-space>
       </n-layout-header>
 
       <n-layout-content
-        content-style="padding: 24px; background-color: #f0f2f5;"
+        content-style="padding: 24px; min-height: 100%;"
         :native-scrollbar="false"
+        class="main-content"
       >
         <router-view v-slot="{ Component }">
           <transition name="fade-slide" mode="out-in">
@@ -106,52 +115,114 @@ const handleMenuSelect = (key) => router.push(key)
 </script>
 
 <style scoped>
-.custom-header {
-  height: 64px;
-  padding: 0 24px;
-  display: flex;
-  align-items: center;
+.main-layout {
+  background-color: #f8fafc;
+}
+
+.custom-sider {
   background: #fff;
-  box-shadow: 0 1px 4px rgba(0, 21, 41, 0.08);
-  z-index: 10;
+  box-shadow: 2px 0 8px rgba(0, 0, 0, 0.02);
+  z-index: 20;
 }
 
 .logo-container {
-  height: 64px;
+  height: 72px;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 12px;
   overflow: hidden;
   transition: all 0.3s;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.logo-icon-bg {
+  width: 40px;
+  height: 40px;
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 6px rgba(16, 185, 129, 0.2);
 }
 
 .logo-text {
   font-size: 18px;
-  font-weight: bold;
-  color: #333;
+  font-weight: 700;
+  color: #1e293b;
   white-space: nowrap;
+  letter-spacing: 0.5px;
+}
+
+.custom-menu {
+  padding-top: 12px;
+}
+
+.custom-header {
+  height: 72px;
+  padding: 0 32px;
+  display: flex;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.82);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid rgba(0,0,0,0.03);
+  z-index: 10;
+  position: sticky;
+  top: 0;
 }
 
 .page-title {
-  font-size: 18px;
-  font-weight: 600;
-  color: #1f2225;
+  font-size: 20px;
+  font-weight: 700;
+  color: #1e293b;
+  letter-spacing: -0.5px;
+}
+
+.user-profile {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  background: #f1f5f9;
+  border-radius: 20px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.user-profile:hover {
+  background: #e2e8f0;
+}
+
+.username {
+  font-size: 14px;
+  font-weight: 500;
+  color: #475569;
 }
 
 /* 页面切换动画 */
 .fade-slide-enter-active,
 .fade-slide-leave-active {
-  transition: all 0.3s ease;
+  transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .fade-slide-enter-from {
   opacity: 0;
-  transform: translateX(-20px);
+  transform: translateY(10px);
 }
 
 .fade-slide-leave-to {
   opacity: 0;
-  transform: translateX(20px);
+  transform: translateY(-10px);
+}
+
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.2s ease;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
 }
 </style>

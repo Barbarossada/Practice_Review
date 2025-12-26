@@ -1,12 +1,48 @@
 <template>
   <div class="converter-container">
-    <n-card title="题库转换工具" :bordered="false" class="converter-card">
-      <n-space vertical size="large">
-        <n-alert title="使用说明" type="info">
-          <p>1. 选择包含题目的 txt 文件</p>
-          <p>2. 系统会自动解析题目和答案</p>
-          <p>3. 点击"转换为Excel"生成可导入的Excel文件</p>
-          <p>4. 题目格式：题号开头，选项A-D/E，答案在文件末尾（1-5 A B C...格式）</p>
+    <div class="converter-header">
+      <h2 class="page-title">题库转换工具</h2>
+      <p class="page-subtitle">将文本题目快速转换为 Excel 导入格式</p>
+    </div>
+
+    <!-- 步骤条 -->
+    <n-card :bordered="false" class="steps-card">
+      <n-steps :current="currentStep" status="process">
+        <n-step
+          title="上传文件"
+          description="选择包含题目的TXT文件"
+        />
+        <n-step
+          title="解析预览"
+          description="确认题目解析结果"
+        />
+        <n-step
+          title="导出Excel"
+          description="生成并下载Excel文件"
+        />
+      </n-steps>
+    </n-card>
+
+    <n-space vertical size="large" class="main-content">
+      <!-- 步骤 1: 上传文件 -->
+      <n-card 
+        v-if="currentStep === 1" 
+        :bordered="false" 
+        class="action-card fade-in"
+      >
+        <template #header>
+          <div class="card-header">
+            <n-icon size="24" color="#10b981" :component="DocumentTextOutline" />
+            <span>上传题目文件</span>
+          </div>
+        </template>
+        
+        <n-alert type="info" title="文件格式要求" class="guide-alert" :show-icon="false">
+          <ul class="guide-list">
+            <li>仅支持 <strong>.txt</strong> 文本文件</li>
+            <li>题目格式：题号开头，选项A-D/E</li>
+            <li>答案格式：位于文件末尾，如 <n-tag size="small" :bordered="false">1-5 A B C D E</n-tag></li>
+          </ul>
         </n-alert>
 
         <n-upload
@@ -14,76 +50,117 @@
           accept=".txt"
           :on-before-upload="handleFileSelect"
           :show-file-list="false"
+          directory-dnd
         >
-          <n-button type="primary" size="large" block>
-            <template #icon>
-              <n-icon :component="DocumentTextOutline" />
-            </template>
-            选择 TXT 文件
-          </n-button>
+          <n-upload-dragger class="custom-dragger">
+            <div class="upload-icon-wrapper">
+              <n-icon size="64" :depth="3" :component="CloudUploadOutline" />
+            </div>
+            <n-text class="upload-text">
+              点击或拖拽 TXT 文件到此处
+            </n-text>
+            <n-p depth="3" style="margin-top: 8px">
+              系统将自动解析题目内容和答案
+            </n-p>
+          </n-upload-dragger>
         </n-upload>
+      </n-card>
 
-        <div v-if="fileName" class="file-info">
-          <n-tag type="success" size="large">
-            <template #icon>
-              <n-icon :component="CheckmarkCircle" />
-            </template>
-            已选择: {{ fileName }}
-          </n-tag>
-        </div>
+      <!-- 步骤 2: 解析结果 & 补充信息 -->
+      <div v-if="currentStep === 2" class="fade-in">
+        <n-grid :x-gap="24" :y-gap="24" cols="1 800:2">
+          <n-grid-item>
+             <n-card :bordered="false" title="基本信息" class="info-card">
+                <n-form-item label="科目名称" required>
+                  <n-input
+                    v-model:value="subjectName"
+                    placeholder="例如：计算机网络"
+                    size="large"
+                  />
+                </n-form-item>
+                
+                <n-form-item label="导出文件名">
+                  <n-input
+                    v-model:value="exportFileName"
+                    placeholder="默认为 '题库'"
+                    size="large"
+                  >
+                    <template #suffix>.xlsx</template>
+                  </n-input>
+                </n-form-item>
+             </n-card>
+          </n-grid-item>
+          
+          <n-grid-item>
+            <n-card :bordered="false" title="解析统计" class="stats-card">
+              <n-grid cols="2" :y-gap="20">
+                 <n-grid-item>
+                   <n-statistic label="选择题" :value="parseResult.choiceCount">
+                     <template #prefix><n-icon color="#2080f0" :component="ListOutline"/></template>
+                   </n-statistic>
+                 </n-grid-item>
+                 <n-grid-item>
+                   <n-statistic label="判断题" :value="parseResult.judgeCount">
+                     <template #prefix><n-icon color="#10b981" :component="CheckmarkCircleOutline"/></template>
+                   </n-statistic>
+                 </n-grid-item>
+                 <n-grid-item>
+                   <n-statistic label="解析答案数" :value="parseResult.answerCount">
+                     <template #prefix><n-icon color="#f0a020" :component="KeyOutline"/></template>
+                   </n-statistic>
+                 </n-grid-item>
+              </n-grid>
+            </n-card>
+          </n-grid-item>
+        </n-grid>
 
-        <n-form-item v-if="fileName" label="科目名称">
-          <n-input
-            v-model:value="subjectName"
-            placeholder="请输入科目名称"
-            clearable
-          />
-        </n-form-item>
-
-        <div v-if="parseResult" class="parse-result">
-          <n-card title="解析结果" size="small">
-            <n-space vertical>
-              <n-statistic label="选择题" :value="parseResult.choiceCount" />
-              <n-statistic label="判断题" :value="parseResult.judgeCount" />
-              <n-statistic label="答案数" :value="parseResult.answerCount" />
-            </n-space>
-          </n-card>
-        </div>
-
-        <n-form-item v-if="parseResult" label="文件名称">
-          <n-input
-            v-model:value="exportFileName"
-            placeholder="请输入文件名（无需后缀）"
-            clearable
+        <n-space justify="space-between" style="margin-top: 24px">
+           <n-button @click="resetFlow" size="large">重新上传</n-button>
+           <n-button
+            type="primary"
+            size="large"
+            @click="convertToExcel"
+            :loading="converting"
+            class="convert-btn"
           >
-            <template #suffix>
-              .xlsx
+            <template #icon>
+              <n-icon :component="DownloadOutline" />
             </template>
-          </n-input>
-        </n-form-item>
+            开始转换并导出
+          </n-button>
+        </n-space>
+      </div>
+      
+       <!-- 步骤 3: 完成 -->
+       <n-result
+        v-if="currentStep === 3"
+        status="success"
+        title="转换成功"
+        description="Excel 文件已开始下载"
+        class="fade-in result-container"
+      >
+        <template #footer>
+          <n-space justify="center">
+            <n-button @click="resetFlow">处理下一个文件</n-button>
+          </n-space>
+        </template>
+      </n-result>
 
-        <n-button
-          v-if="parseResult"
-          type="success"
-          size="large"
-          block
-          @click="convertToExcel"
-          :loading="converting"
-        >
-          <template #icon>
-            <n-icon :component="DownloadOutline" />
-          </template>
-          转换为 Excel 并下载
-        </n-button>
-      </n-space>
-    </n-card>
+    </n-space>
   </div>
 </template>
 
 <script setup>
-import { ref } from 'vue'
-import { useMessage, NCard, NSpace, NAlert, NUpload, NButton, NIcon, NTag, NStatistic, NFormItem, NInput } from 'naive-ui'
-import { DocumentTextOutline, CheckmarkCircle, DownloadOutline } from '@vicons/ionicons5'
+import { ref, computed } from 'vue'
+import { 
+  useMessage, NCard, NSpace, NAlert, NUpload, NButton, NIcon, 
+  NTag, NStatistic, NFormItem, NInput, NSteps, NStep, NUploadDragger, NText, NP,
+  NGrid, NGridItem, NResult
+} from 'naive-ui'
+import { 
+  DocumentTextOutline, CheckmarkCircle, DownloadOutline, CloudUploadOutline,
+  ListOutline, CheckmarkCircleOutline, KeyOutline
+} from '@vicons/ionicons5'
 import * as XLSX from 'xlsx'
 
 const message = useMessage()
@@ -93,6 +170,7 @@ const parseResult = ref(null)
 const converting = ref(false)
 const exportFileName = ref('题库')
 const subjectName = ref('未分类')
+const currentStep = ref(1)
 
 const handleFileSelect = (options) => {
   const file = options.file.file
@@ -113,8 +191,6 @@ const parseQuestions = () => {
     const content = fileContent.value
     
     // 分离题目和答案部分
-    // 答案通常在文件末尾，格式如 "1-5 A B C D E" 或 "1-5 ABCDE"
-    // 查找答案开始的位置（匹配 数字-数字 格式）
     const lines = content.split('\n')
     let answerStartLineIndex = -1
     
@@ -125,7 +201,6 @@ const parseQuestions = () => {
       if (/^\d+-\d+\s+[A-E\s]+/.test(line) || /\d+-\d+\s+[A-E]/.test(line)) {
         answerStartLineIndex = i
       } else if (answerStartLineIndex !== -1 && line && !/^\d+-\d+/.test(line)) {
-        // 找到了非答案行，停止
         break
       }
     }
@@ -137,9 +212,6 @@ const parseQuestions = () => {
       questionPart = lines.slice(0, answerStartLineIndex).join('\n')
       answerPart = lines.slice(answerStartLineIndex).join('\n')
     }
-    
-    console.log('题目部分行数:', questionPart.split('\n').length)
-    console.log('答案部分:', answerPart)
     
     // 解析题目
     const { choiceQuestions, judgeQuestions } = parseQuestionText(questionPart)
@@ -157,6 +229,7 @@ const parseQuestions = () => {
     }
     
     message.success('题目解析成功！')
+    currentStep.value = 2 // 进入下一步
   } catch (error) {
     console.error('解析失败:', error)
     message.error('题目解析失败，请检查文件格式')
@@ -184,7 +257,6 @@ const parseQuestionText = (content) => {
     // 匹配题号
     const questionMatch = line.match(/^(\d+)[\.\、]?\s*(.+)/)
     if (questionMatch) {
-      // 保存上一题
       if (currentQuestion) {
         if (Object.keys(currentQuestion.options).length > 0) {
           choiceQuestions.push(currentQuestion)
@@ -193,7 +265,6 @@ const parseQuestionText = (content) => {
         }
       }
       
-      // 开始新题
       currentQuestion = {
         num: parseInt(questionMatch[1]),
         content: questionMatch[2].trim(),
@@ -215,7 +286,6 @@ const parseQuestionText = (content) => {
     }
   }
   
-  // 保存最后一题
   if (currentQuestion) {
     if (Object.keys(currentQuestion.options).length > 0) {
       choiceQuestions.push(currentQuestion)
@@ -231,14 +301,7 @@ const parseAnswers = (answerText) => {
   const answers = {}
   if (!answerText || !answerText.trim()) return answers
   
-  console.log('解析答案文本:', answerText)
-  
-  // 将所有内容合并成一行处理，方便解析
   const allText = answerText.replace(/\n/g, ' ').replace(/\s+/g, ' ').trim()
-  console.log('合并后:', allText)
-  
-  // 匹配所有 "数字-数字 答案..." 的模式
-  // 例如: "1-5 D A B C D" 或 "6-10 A C A C C"
   const rangePattern = /(\d+)-(\d+)\s+([A-E\s]+?)(?=\d+-\d+|$)/g
   let match
   
@@ -247,17 +310,13 @@ const parseAnswers = (answerText) => {
     const end = parseInt(match[2])
     const answersStr = match[3].trim()
     
-    // 提取答案字母
     const answerLetters = answersStr.split(/\s+/).filter(a => /^[A-E]+$/.test(a))
-    console.log(`范围 ${start}-${end}, 答案:`, answerLetters)
     
-    // 分配答案
     for (let j = 0; j < answerLetters.length && (start + j) <= end; j++) {
       answers[start + j] = answerLetters[j]
     }
   }
   
-  console.log('解析出的答案:', answers)
   return answers
 }
 
@@ -267,7 +326,6 @@ const convertToExcel = () => {
   try {
     const { choiceQuestions, judgeQuestions, answers } = parseResult.value
     
-    // 创建工作簿
     const wb = XLSX.utils.book_new()
     
     // 创建选择题工作表
@@ -284,24 +342,16 @@ const convertToExcel = () => {
         q.options['D'] || '',
         answers[q.num] || '',
         '',
-        q.subject,
+        subjectName.value || '未分类', // 使用用户输入的科目
         q.difficulty
       ])
     }
     
     const wsChoice = XLSX.utils.aoa_to_sheet(choiceData)
     
-    // 设置列宽
     wsChoice['!cols'] = [
-      { wch: 50 }, // 题目
-      { wch: 30 }, // 选项A
-      { wch: 30 }, // 选项B
-      { wch: 30 }, // 选项C
-      { wch: 30 }, // 选项D
-      { wch: 10 }, // 答案
-      { wch: 40 }, // 解析
-      { wch: 12 }, // 科目
-      { wch: 10 }  // 难度
+      { wch: 50 }, { wch: 30 }, { wch: 30 }, { wch: 30 }, { wch: 30 },
+      { wch: 10 }, { wch: 40 }, { wch: 12 }, { wch: 10 }
     ]
     
     XLSX.utils.book_append_sheet(wb, wsChoice, '选择题')
@@ -314,42 +364,39 @@ const convertToExcel = () => {
       
       for (const q of judgeQuestions) {
         let answer = answers[q.num] || ''
-        if (['T', 'True', '对', '√'].includes(answer)) {
-          answer = '正确'
-        } else if (['F', 'False', '错', '×'].includes(answer)) {
-          answer = '错误'
+        // 将字母转换为判断题答案
+        if (['T', 'True', '对', '√', 'A'].includes(answer)) { // 假设 A 是正确
+           // 这里需要根据实际情况判断，通常判断题 A=对, B=错
+           answer = '正确'
+        } else if (['F', 'False', '错', '×', 'B'].includes(answer)) {
+           answer = '错误'
         }
         
         judgeData.push([
           q.content,
           answer,
           '',
-          q.subject,
+          subjectName.value || '未分类',
           q.difficulty
         ])
       }
       
       const wsJudge = XLSX.utils.aoa_to_sheet(judgeData)
       wsJudge['!cols'] = [
-        { wch: 60 },
-        { wch: 10 },
-        { wch: 40 },
-        { wch: 12 },
-        { wch: 10 }
+        { wch: 60 }, { wch: 10 }, { wch: 40 }, { wch: 12 }, { wch: 10 }
       ]
       
       XLSX.utils.book_append_sheet(wb, wsJudge, '判断题')
     }
     
-    // 生成文件名
     const customName = exportFileName.value.trim() || '题库'
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19)
     const filename = `${customName}_${timestamp}.xlsx`
     
-    // 下载文件
     XLSX.writeFile(wb, filename)
     
     message.success('Excel 文件已生成并下载！')
+    currentStep.value = 3 // 完成
   } catch (error) {
     console.error('转换失败:', error)
     message.error('转换失败，请重试')
@@ -357,28 +404,115 @@ const convertToExcel = () => {
     converting.value = false
   }
 }
+
+const resetFlow = () => {
+  currentStep.value = 1
+  fileName.value = ''
+  fileContent.value = ''
+  parseResult.value = null
+  exportFileName.value = '题库'
+  subjectName.value = '未分类'
+}
 </script>
 
 <style scoped>
 .converter-container {
-  max-width: 800px;
+  max-width: 900px;
   margin: 0 auto;
-  padding: 20px;
+  padding-bottom: 60px;
 }
 
-.converter-card {
-  border-radius: 16px;
-  box-shadow: 0 4px 20px rgba(0,0,0,0.08);
-}
-
-.file-info {
-  padding: 16px;
-  background: #f0fdf4;
-  border-radius: 12px;
+.converter-header {
   text-align: center;
+  margin-bottom: 32px;
 }
 
-.parse-result {
-  margin-top: 20px;
+.page-title {
+  font-size: 28px;
+  font-weight: 700;
+  color: #1f2937;
+  margin-bottom: 8px;
+}
+
+.page-subtitle {
+  color: #6b7280;
+  font-size: 16px;
+}
+
+.steps-card {
+  border-radius: 16px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.03);
+  margin-bottom: 32px;
+  padding: 12px 0;
+}
+
+.action-card, .info-card, .stats-card {
+  border-radius: 16px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.04);
+  transition: transform 0.2s;
+}
+
+.card-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 18px;
+  font-weight: 600;
+  color: #374151;
+}
+
+.guide-alert {
+  margin-bottom: 24px;
+  border-radius: 8px;
+}
+
+.guide-list {
+  padding-left: 20px;
+  margin: 0;
+  color: #4b5563;
+}
+.guide-list li {
+  margin-bottom: 4px;
+}
+
+.custom-dragger {
+  background-color: #f9fafb;
+  border-radius: 12px;
+  transition: all 0.3s;
+}
+.custom-dragger:hover {
+  background-color: #f0fdf4;
+  border-color: #10b981;
+}
+
+.upload-icon-wrapper {
+  margin-bottom: 16px;
+}
+
+.upload-text {
+  font-size: 18px;
+  font-weight: 500;
+}
+
+.convert-btn {
+  font-weight: 600;
+  padding: 0 32px;
+}
+
+.result-container {
+  margin-top: 60px;
+  padding: 40px;
+  background: white;
+  border-radius: 16px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.04);
+}
+
+.fade-in {
+  animation: fadeIn 0.4s ease-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 </style>

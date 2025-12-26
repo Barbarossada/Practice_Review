@@ -15,15 +15,31 @@ import { NConfigProvider, NMessageProvider, NDialogProvider, NNotificationProvid
 
 const themeOverrides = {
   common: {
-    primaryColor: '#18a058',
-    primaryColorHover: '#36ad6a',
-    primaryColorPressed: '#0c7a43',
-    primaryColorSuppl: '#36ad6a'
+    primaryColor: '#10b981', // 更清新现代的绿色 (Emerald 500)
+    primaryColorHover: '#34d399',
+    primaryColorPressed: '#059669',
+    primaryColorSuppl: '#34d399',
+    borderRadius: '8px', // 全局圆角
+    fontFamily: '"Inter", "Roboto", -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", Arial, sans-serif'
+  },
+  Button: {
+    borderRadiusMedium: '8px',
+    fontWeight: '500' // 按钮字体加粗一点
+  },
+  Card: {
+    borderRadius: '16px', // 卡片圆角更大
+    boxShadow: '0 4px 20px 0 rgba(0, 0, 0, 0.03)' // 极柔和的阴影
+  },
+  Input: {
+    borderRadius: '8px'
   }
 }
 </script>
 
 <style>
+/* 引入 Inter 字体 (如果项目中没有本地字体，这里只是备选方案，主要依赖系统字体) */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
 * {
   margin: 0;
   padding: 0;
@@ -31,12 +47,11 @@ const themeOverrides = {
 }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial,
-    'Noto Sans', sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol',
-    'Noto Color Emoji';
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  background-color: #f0f2f5;
+  background-color: #f8fafc; /* 更干净的背景色 (Slate 50) */
+  color: #1e293b; /* Slate 800 */
 }
 
 #app {
@@ -44,17 +59,17 @@ body {
   height: 100vh;
 }
 
-/* 滚动条美化 */
+/* 滚动条美化 (Mac OS风格) */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
 }
 ::-webkit-scrollbar-thumb {
-  background: #ccc;
+  background: #cbd5e1;
   border-radius: 3px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #999;
+  background: #94a3b8;
 }
 ::-webkit-scrollbar-track {
   background: transparent;

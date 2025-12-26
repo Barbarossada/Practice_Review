@@ -47,7 +47,7 @@
 
         <div class="options-list">
           <!-- 单选题：圆形选项卡片 -->
-          <template v-if="currentQuestion.type === 'single-choice' && options.length > 0">
+          <template v-if="(currentQuestion.type === 'single-choice' || currentQuestion.type === 'choice') && options.length > 0">
             <div 
               v-for="option in options" 
               :key="option.key"
@@ -91,31 +91,6 @@
               <div class="option-text">{{ option.text }}</div>
               <div v-if="practiceStore.showAnalysis && isInCorrectAnswer(option.key)" class="result-icon">
                 <n-icon :component="CheckmarkCircle" color="#18a058" size="24"/>
-              </div>
-            </div>
-          </template>
-          
-          <!-- 选择题（兼容所有选择题类型：single-choice, multiple-choice, choice）-->
-          <template v-if="(currentQuestion.type === 'single-choice' || currentQuestion.type === 'multiple-choice' || currentQuestion.type === 'choice') && options.length > 0">
-            <div 
-              v-for="option in options" 
-              :key="option.key"
-              class="option-item"
-              :class="{ 
-                'selected': userAnswer === option.key,
-                'disabled': practiceStore.showAnalysis,
-                'correct-highlight': practiceStore.showAnalysis && option.key === currentQuestion.answer,
-                'error-highlight': practiceStore.showAnalysis && userAnswer === option.key && userAnswer !== currentQuestion.answer
-              }"
-              @click="handleSelectOption(option.key)"
-            >
-              <div class="option-key">{{ option.key }}</div>
-              <div class="option-text">{{ option.text }}</div>
-              <div v-if="practiceStore.showAnalysis && option.key === currentQuestion.answer" class="result-icon">
-                <n-icon :component="CheckmarkCircle" color="#18a058" size="24"/>
-              </div>
-               <div v-if="practiceStore.showAnalysis && userAnswer === option.key && userAnswer !== currentQuestion.answer" class="result-icon">
-                <n-icon :component="CloseCircle" color="#d03050" size="24"/>
               </div>
             </div>
           </template>
@@ -212,9 +187,7 @@ const selectedAnswers = ref([]) // 多选题答案数组
 const filters = reactive({ subject: null, type: null, difficulty: null })
 
 // 选项配置
-const subjectOptions = ref([
-  { label: '全部科目', value: null }
-])
+const subjectOptions = ref([])
 
 // 加载科目列表（保持纯查询，避免后端未启动时报错）
 const loadSubjects = async () => {
@@ -225,8 +198,9 @@ const loadSubjects = async () => {
         label: `${subject.name} (${subject.questionCount})`,
         value: subject.name
       }))
+      // 将"全部科目"作为独立选项，value设为空字符串而非null
       subjectOptions.value = [
-        { label: '全部科目', value: null },
+        { label: '全部科目', value: '' },
         ...subjects
       ]
     }
@@ -236,6 +210,7 @@ const loadSubjects = async () => {
 }
 
 const typeOptions = [
+  { label: '混合题型', value: '' },
   { label: '单选题', value: 'single-choice' },
   { label: '多选题', value: 'multiple-choice' },
   { label: '判断题', value: 'judge' }
@@ -447,15 +422,30 @@ onUnmounted(() => window.removeEventListener('keyup', handleKeyup))
 
 const startPractice = async () => {
   try {
-    const res = await getRandomQuestion(filters)
+    console.log('======= 开始获取题目 =======')
+    console.log('筛选条件:', filters)
+
+    // 过滤空字符串参数，确保后端接收到正确的值
+    const params = {
+      ...filters,
+      subject: filters.subject && filters.subject.trim() !== '' ? filters.subject : undefined
+    }
+    console.log('实际发送参数:', params)
+
+    const res = await getRandomQuestion(params)
+    console.log('接收到后端响应:', res)
     if (!res.data) {
       message.warning('没有找到符合条件的题目')
       return
     }
     console.log('获取到题目:', res.data)
+    console.log('题目ID:', res.data.id)
     console.log('题目类型:', res.data.type)
+    console.log('题目科目:', res.data.subject)
+    console.log('题目内容:', res.data.content)
     console.log('选项数据:', res.data.options)
     console.log('选项类型:', typeof res.data.options, Array.isArray(res.data.options))
+    console.log('============================')
     
     currentQuestion.value = res.data
     practiceStore.setCurrentQuestion(res.data)

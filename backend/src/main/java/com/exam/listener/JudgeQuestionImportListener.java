@@ -6,6 +6,7 @@ import com.exam.dto.JudgeQuestionImportDTO;
 import com.exam.entity.Question;
 import com.exam.service.QuestionService;
 import com.exam.service.SubjectService;
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.ArrayList;
@@ -47,6 +48,16 @@ public class JudgeQuestionImportListener extends AnalysisEventListener<JudgeQues
     public void invoke(JudgeQuestionImportDTO data, AnalysisContext context) {
         try {
             Question question = convertToQuestion(data);
+
+            // 检查是否已存在相同内容的题目（同一科目下）
+            QueryWrapper<Question> wrapper = new QueryWrapper<>();
+            wrapper.eq("content", question.getContent());
+            wrapper.eq("subject", question.getSubject());
+            if (questionService.count(wrapper) > 0) {
+                log.warn("题目已存在，跳过: {}", question.getContent());
+                return;
+            }
+
             questions.add(question);
 
             // 每100条批量保存一次
