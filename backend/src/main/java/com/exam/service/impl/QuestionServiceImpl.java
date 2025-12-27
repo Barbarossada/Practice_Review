@@ -9,6 +9,7 @@ import com.exam.entity.Question;
 import com.exam.mapper.QuestionMapper;
 import com.exam.service.QuestionService;
 import com.exam.service.SubjectService;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
@@ -24,6 +25,7 @@ import java.util.Map;
  * @author Exam System
  * @since 2025-12-19
  */
+@Slf4j
 @Service
 public class QuestionServiceImpl extends ServiceImpl<QuestionMapper, Question> implements QuestionService {
 
@@ -46,75 +48,77 @@ public class QuestionServiceImpl extends ServiceImpl<QuestionMapper, Question> i
 
     @Override
     public Page<Question> getQuestionPage(Long page, Long size, String subject, String type, String difficulty) {
-        System.out.println("======= QuestionService.getQuestionPage =======");
-        System.out.println("参数: page=" + page + ", size=" + size + ", subject=" + subject + ", type=" + type + ", difficulty=" + difficulty);
+        log.info("======= QuestionService.getQuestionPage =======");
+        log.info("参数: page={}, size={}, subject={}, type={}, difficulty={}", page, size, subject, type, difficulty);
         
         Page<Question> pageParam = new Page<>(page, size);
         QueryWrapper<Question> wrapper = new QueryWrapper<>();
 
         // 构建查询条件
         if (StrUtil.isNotBlank(subject)) {
-            System.out.println("添加subject条件: " + subject);
+            log.debug("添加subject条件: {}", subject);
             wrapper.eq("subject", subject);
         }
         if (StrUtil.isNotBlank(type)) {
-            System.out.println("添加type条件: " + type);
+            log.debug("添加type条件: {}", type);
             wrapper.eq("type", type);
         }
         if (StrUtil.isNotBlank(difficulty)) {
-            System.out.println("添加difficulty条件: " + difficulty);
+            log.debug("添加difficulty条件: {}", difficulty);
             wrapper.eq("difficulty", difficulty);
         }
 
         // 按创建时间倒序
         wrapper.orderByDesc("create_time");
         
-        System.out.println("SQL: " + wrapper.getTargetSql());
+        log.debug("SQL: {}", wrapper.getTargetSql());
 
         Page<Question> result = this.page(pageParam, wrapper);
-        System.out.println("查询结果: total=" + result.getTotal() + ", records=" + result.getRecords().size());
-        System.out.println("===========================================");
+        log.info("查询结果: total={}, records={}", result.getTotal(), result.getRecords().size());
+        log.info("===========================================");
         return result;
     }
 
     @Override
     public Question getRandomQuestion(String subject, String type, String difficulty) {
-        System.out.println("======= QuestionService.getRandomQuestion =======");
-        System.out.println("参数: subject='" + subject + "', type='" + type + "', difficulty='" + difficulty + "'");
+        log.info("======= QuestionService.getRandomQuestion =======");
+        log.info("参数: subject='{}', type='{}', difficulty='{}'", subject, type, difficulty);
         
         QueryWrapper<Question> wrapper = new QueryWrapper<>();
 
         // 构建查询条件
         if (StrUtil.isNotBlank(subject)) {
-            System.out.println("添加subject条件: " + subject);
+            log.debug("添加subject条件: {}", subject);
             wrapper.eq("subject", subject);
         }
         if (StrUtil.isNotBlank(type)) {
-            System.out.println("添加type条件: " + type);
+            log.debug("添加type条件: {}", type);
             wrapper.eq("type", type);
         }
         if (StrUtil.isNotBlank(difficulty)) {
-            System.out.println("添加difficulty条件: " + difficulty);
+            log.debug("添加difficulty条件: {}", difficulty);
             wrapper.eq("difficulty", difficulty);
         }
 
         // 获取符合条件的题目数量
         long count = this.count(wrapper);
-        System.out.println("符合条件的题目数量: " + count);
+        log.info("符合条件的题目数量: {}", count);
         if (count == 0) {
             return null;
         }
 
         // 随机偏移量
         int offset = RandomUtil.randomInt(0, (int) count);
-        System.out.println("随机偏移量: " + offset);
+        log.info("随机偏移量: {}", offset);
         wrapper.last("LIMIT 1 OFFSET " + offset);
 
         Question result = this.getOne(wrapper);
         if (result != null) {
-            System.out.println("返回题目: ID=" + result.getId() + ", subject='" + result.getSubject() + "', type='" + result.getType() + "', content='" + result.getContent().substring(0, Math.min(50, result.getContent().length())) + "...'");
+            log.info("返回题目: ID={}, subject='{}', type='{}', content='{}...'", 
+                result.getId(), result.getSubject(), result.getType(), 
+                result.getContent().substring(0, Math.min(50, result.getContent().length())));
         }
-        System.out.println("===========================================");
+        log.info("===========================================");
         return result;
     }
 
