@@ -197,8 +197,8 @@ const parseQuestions = () => {
     // 从后往前找答案行
     for (let i = lines.length - 1; i >= 0; i--) {
       const line = lines[i].trim()
-      // 答案行特征：包含 "数字-数字" 格式且后面跟着字母答案
-      if (/^\d+-\d+\s+[A-E\s]+/.test(line) || /\d+-\d+\s+[A-E]/.test(line)) {
+      // 答案行特征：包含 "数字-数字" 格式且后面跟着字母答案（支持 A-F 选项）
+      if (/^\d+-\d+\s+[A-F\s]+/.test(line) || /\d+-\d+\s+[A-F]/.test(line)) {
         answerStartLineIndex = i
       } else if (answerStartLineIndex !== -1 && line && !/^\d+-\d+/.test(line)) {
         break
@@ -279,15 +279,21 @@ const parseQuestionText = (content) => {
       continue
     }
     
-    // 匹配选项
-    const optionMatch = line.match(/^([A-E])\s*[\.\、\:：]?\s*(.+)/)
+    // 匹配选项（支持 A-F 选项）
+    const optionMatch = line.match(/^([A-F])\s*[\.\、\:：]?\s*(.+)/)
     if (optionMatch && currentQuestion) {
       const key = optionMatch[1]
       const value = optionMatch[2].trim()
       if (value) {
         currentQuestion.options[key] = value
-      }
+      }      continue
     }
+    
+    // 匹配判断题答案（答案：正确 或 答案：错误）
+    const judgeAnswerMatch = line.match(/^答案[：:]\s*(正确|错误|对|错|√|×|T|F|True|False)/i)
+    if (judgeAnswerMatch && currentQuestion) {
+      currentQuestion.judgeAnswer = judgeAnswerMatch[1]
+      continue    }
     
     // 匹配解析（答案解析：... 或 解析：...）
     const analysisMatch = line.match(/^(?:答案)?解析[：:]\s*(.+)/)
@@ -312,7 +318,8 @@ const parseAnswers = (answerText) => {
   if (!answerText || !answerText.trim()) return answers
   
   const allText = answerText.replace(/\n/g, ' ').replace(/\s+/g, ' ').trim()
-  const rangePattern = /(\d+)-(\d+)\s+([A-E\s]+?)(?=\d+-\d+|$)/g
+  // 支持 A-F 选项
+  const rangePattern = /(\d+)-(\d+)\s+([A-F\s]+?)(?=\d+-\d+|$)/g
   let match
   
   while ((match = rangePattern.exec(allText)) !== null) {
@@ -320,7 +327,8 @@ const parseAnswers = (answerText) => {
     const end = parseInt(match[2])
     const answersStr = match[3].trim()
     
-    const answerLetters = answersStr.split(/\s+/).filter(a => /^[A-E]+$/.test(a))
+    // 支持 A-F 选项
+    const answerLetters = answersStr.split(/\s+/).filter(a => /^[A-F]+$/.test(a))
     
     for (let j = 0; j < answerLetters.length && (start + j) <= end; j++) {
       answers[start + j] = answerLetters[j]
@@ -374,12 +382,12 @@ const convertToExcel = () => {
       ]
       
       for (const q of judgeQuestions) {
-        let answer = answers[q.num] || ''
-        // 将字母转换为判断题答案
-        if (['T', 'True', '对', '√', 'A'].includes(answer)) { // 假设 A 是正确
-           // 这里需要根据实际情况判断，通常判断题 A=对, B=错
+        // 优先使用题目中解析到的答案，其次使用文件末尾的答案
+        let answer = q.judgeAnswer || answers[q.num] || ''
+        // 标准化判断题答案
+        if (['T', 'True', '对', '√', 'A', '正确'].includes(answer)) {
            answer = '正确'
-        } else if (['F', 'False', '错', '×', 'B'].includes(answer)) {
+        } else if (['F', 'False', '错', '×', 'B', '错误'].includes(answer)) {
            answer = '错误'
         }
         
