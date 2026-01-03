@@ -62,7 +62,7 @@
           </n-empty>
 
           <div v-else class="hand-list">
-             <div v-for="(record, index) in recentRecords" :key="index" class="hand-item">
+             <div v-for="(record, index) in paginatedRecords" :key="index" class="hand-item">
                <div class="item-status">
                  <span class="status-dot" :class="{ correct: record.isCorrect }"></span>
                </div>
@@ -74,6 +74,15 @@
                  </div>
                </div>
              </div>
+          </div>
+          
+          <!-- 分页组件 -->
+          <div class="pagination-wrapper" v-if="totalRecords > pageSize">
+            <n-pagination
+              v-model:page="currentPage"
+              :page-count="Math.ceil(totalRecords / pageSize)"
+              :page-size="pageSize"
+            />
           </div>
         </div>
       </div>
@@ -101,10 +110,10 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import {
-  NIcon, NButton, NEmpty, useDialog, useMessage
+  NIcon, NButton, NEmpty, NPagination, useDialog, useMessage
 } from 'naive-ui'
 import {
   SchoolOutline, CheckmarkCircleOutline, CloseCircleOutline,
@@ -117,9 +126,19 @@ const dialog = useDialog()
 const message = useMessage()
 const practiceStore = usePracticeStore()
 
-// 最近10条记录
-const recentRecords = computed(() => {
-  return practiceStore.practiceHistory.slice(-10).reverse()
+// 分页状态
+const currentPage = ref(1)
+const pageSize = ref(10)
+
+// 总记录数
+const totalRecords = computed(() => practiceStore.practiceHistory.length)
+
+// 分页后的记录
+const paginatedRecords = computed(() => {
+  const allRecords = [...practiceStore.practiceHistory].reverse()
+  const start = (currentPage.value - 1) * pageSize.value
+  const end = start + pageSize.value
+  return allRecords.slice(start, end)
 })
 
 const formatTime = (timestamp) => {

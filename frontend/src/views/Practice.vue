@@ -66,23 +66,24 @@
         </div>
   
         <div v-else class="question-wrapper">
-          <!-- Progress Header -->
-          <div class="focus-header">
-            <div class="progress-info">
-              <span class="progress-label">当前进度</span>
-               <n-progress 
-                type="line" 
-                :percentage="(practiceStore.totalPracticeCount % 20) * 5" 
-                :indicator-placement="'inside'" 
-                color="#10b981"
-                rail-color="rgba(255,255,255,0.3)"
-                class="progress-bar"
-              />
-              <span class="progress-text">第 {{ practiceStore.totalPracticeCount + 1 }} 题</span>
+          <!-- 顶部工具栏 -->
+          <div class="practice-toolbar">
+            <div class="toolbar-left">
+              <div class="progress-chip">
+                <span class="chip-icon">📝</span>
+                <span class="chip-text">第 {{ historyIndex + 1 }} 题</span>
+                <span class="chip-divider">|</span>
+                <span class="chip-total">共 {{ practiceHistory.length }} 题</span>
+              </div>
             </div>
-            <n-button quaternary circle class="close-btn" @click="exitPractice">
-               <n-icon :component="CloseOutline" size="24" />
-            </n-button>
+            <div class="toolbar-right">
+              <n-button quaternary circle class="toolbar-btn" @click="showSearchModal = true" title="搜索题目">
+                <n-icon :component="SearchOutline" size="18" />
+              </n-button>
+              <n-button quaternary circle class="toolbar-btn close" @click="exitPractice" title="退出练习">
+                <n-icon :component="CloseOutline" size="20" />
+              </n-button>
+            </div>
           </div>
   
           <div class="question-panel paper-effect">
@@ -177,13 +178,23 @@
             </div>
   
             <div class="action-bar">
-              <!-- Decorative Arrow Left (Visual Balance) -->
-              <svg class="decor-arrow-prev" viewBox="0 0 60 40" fill="none" xmlns="http://www.w3.org/2000/svg" stroke="#2c3e50" style="left: -80px;">
-                 <path d="M50 20 C 35 15, 15 15, 5 20 M 5 20 L 15 10 M 5 20 L 15 30" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
-              </svg>
-  
+              <!-- 上一题按钮（基于做题历史） -->
               <n-button 
-                v-if="!practiceStore.showAnalysis" 
+                quaternary 
+                round 
+                size="large" 
+                class="nav-btn prev-btn"
+                :disabled="historyIndex <= 0"
+                @click="goToPrevQuestion"
+              >
+                <n-icon :component="ArrowBackOutline" size="20" />
+                上一题
+              </n-button>
+  
+              <!-- 中间按钮区域 -->
+              <!-- 情况1：正常做题（在历史末尾）- 显示提交答案 -->
+              <n-button 
+                v-if="!isReviewingHistory && !practiceStore.showAnalysis" 
                 type="primary" 
                 round 
                 size="large" 
@@ -193,8 +204,10 @@
               >
                 提交答案
               </n-button>
+              
+              <!-- 情况2：已提交答案（不在回顾模式）- 显示下一题 -->
               <n-button 
-                v-else 
+                v-if="!isReviewingHistory && practiceStore.showAnalysis" 
                 type="primary" 
                 round 
                 size="large" 
@@ -204,10 +217,18 @@
                 下一题 (Enter)
               </n-button>
               
-              <!-- Decorative Arrow Right -->
-              <svg class="decor-arrow-next" viewBox="0 0 60 40" fill="none" xmlns="http://www.w3.org/2000/svg" stroke="#2c3e50" style="right: -80px;">
-                 <path d="M10 20 C 25 25, 45 25, 55 20 M 55 20 L 45 10 M 55 20 L 45 30" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
-              </svg>
+              <!-- 情况3：回顾历史模式 - 显示下一题按钮（前进到下一条历史） -->
+              <n-button 
+                v-if="isReviewingHistory"
+                type="primary" 
+                round 
+                size="large" 
+                class="action-btn"
+                :disabled="historyIndex >= practiceHistory.length - 1"
+                @click="goToNextHistoryQuestion"
+              >
+                下一题 →
+              </n-button>
             </div>
   
             <transition name="slide-up">
@@ -236,16 +257,42 @@
         </div>
       </transition>
     </div>
+    
+    <!-- 搜索模态框 -->
+    <n-modal v-model:show="showSearchModal" preset="card" title="🔍 搜索题目" style="width: 500px; max-width: 90vw;">
+      <div class="search-modal-content">
+        <n-input 
+          v-model:value="searchKeyword" 
+          placeholder="输入题号或关键词..." 
+          size="large"
+          @keyup.enter="handleSearch"
+        >
+          <template #prefix>
+            <n-icon :component="SearchOutline" />
+          </template>
+        </n-input>
+        <n-button type="primary" @click="handleSearch" style="margin-top: 16px; width: 100%;">
+          搜索
+        </n-button>
+        
+        <div v-if="searchResults.length > 0" class="search-results">
+          <div v-for="q in searchResults" :key="q.id" class="search-result-item" @click="jumpToQuestion(q)">
+            <span class="result-id">#{{ q.id }}</span>
+            <span class="result-content">{{ q.content.substring(0, 50) }}...</span>
+          </div>
+        </div>
+      </div>
+    </n-modal>
   </div>
 </template>
 
 <script setup>
 import { ref, computed, reactive, onMounted, onUnmounted, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
-import { useMessage, useDialog, NCard, NForm, NFormItem, NGrid, NGridItem, NSelect, NButton, NTag, NText, NIcon } from 'naive-ui'
-import { CloseOutline, CheckmarkCircle, CloseCircle, CheckmarkOutline } from '@vicons/ionicons5'
+import { useMessage, useDialog, NCard, NForm, NFormItem, NGrid, NGridItem, NSelect, NButton, NTag, NText, NIcon, NModal, NInput, NProgress } from 'naive-ui'
+import { CloseOutline, CheckmarkCircle, CloseCircle, CheckmarkOutline, SearchOutline, ArrowBackOutline, SchoolOutline, BookOutline } from '@vicons/ionicons5'
 import { getRandomQuestion } from '@/api/question'
-import { submitAnswer as submitAnswerApi } from '@/api/practice'
+import { submitAnswer as submitAnswerApi, startRound, nextRoundQuestion, prevRoundQuestion, resetRound, searchQuestions, startWrongBookPractice, nextWrongQuestion } from '@/api/practice'
 import { getAllSubjects } from '@/api/subject'
 import { usePracticeStore } from '@/stores/practice'
 
@@ -257,6 +304,38 @@ const practiceStore = usePracticeStore()
 const currentQuestion = ref(null)
 const userAnswer = ref(null)
 const selectedAnswers = ref([]) // 多选题答案数组
+
+// 轮次相关状态
+const currentIndex = ref(0)
+const totalCount = ref(0)
+const roundNumber = ref(1)
+const isRoundFinished = ref(false)
+const currentSubject = ref('')
+
+// 错题练习模式
+const isWrongBookMode = ref(false)
+const wrongBookSubject = ref(null)
+
+// 做题历史记录（用于上一题/下一题导航）
+const practiceHistory = ref([]) // [{question, userAnswer}]
+const historyIndex = ref(-1) // 当前在历史中的位置
+
+// 是否在回顾历史模式（不在历史末尾）
+const isReviewingHistory = computed(() => {
+  return historyIndex.value >= 0 && historyIndex.value < practiceHistory.value.length - 1
+})
+
+// 搜索相关
+const showSearchModal = ref(false)
+const searchKeyword = ref('')
+const searchResults = ref([])
+
+// 计算进度百分比（基于做题历史）
+const roundProgress = computed(() => {
+  if (practiceHistory.value.length === 0) return 0
+  // 每 20 题一个轮回
+  return Math.round(((practiceHistory.value.length % 20) / 20) * 100)
+})
 const filters = reactive({ subject: null, type: null, difficulty: null })
 
 // 选项配置
@@ -491,7 +570,44 @@ onMounted(() => {
   loadSubjects()
   generateDoodles()
   window.addEventListener('keyup', handleKeyup)
+  
+  // 检查是否从错题本页面跳转过来
+  const query = router.currentRoute.value.query
+  if (query.wrongBookPractice === 'true') {
+    isWrongBookMode.value = true
+    wrongBookSubject.value = null
+    startWrongBookPracticeMode()
+  } else if (query.wrongBookSubject) {
+    isWrongBookMode.value = true
+    wrongBookSubject.value = query.wrongBookSubject
+    startWrongBookPracticeMode()
+  }
 })
+
+// 开始错题练习模式
+const startWrongBookPracticeMode = async () => {
+  try {
+    const res = await startWrongBookPractice(wrongBookSubject.value)
+    if (!res.data || !res.data.question) {
+      message.warning('暂无错题')
+      return
+    }
+    
+    currentQuestion.value = res.data.question
+    currentIndex.value = res.data.currentIndex
+    totalCount.value = res.data.totalCount
+    practiceStore.setCurrentQuestion(res.data.question)
+    userAnswer.value = null
+    selectedAnswers.value = []
+    
+    addToHistory(res.data.question)
+    
+    message.success(`开始错题练习${wrongBookSubject.value ? ` (${wrongBookSubject.value})` : ''}，共 ${totalCount.value} 题`)
+  } catch (error) {
+    console.error('开始错题练习失败:', error)
+    message.error('开始错题练习失败')
+  }
+}
 onUnmounted(() => window.removeEventListener('keyup', handleKeyup))
 
 // === Doodle Logic ===
@@ -553,48 +669,65 @@ const generateDoodles = () => {
 
 const startPractice = async () => {
   try {
-    console.log('======= 开始获取题目 =======')
+    console.log('======= 开始轮次练习 =======')
     console.log('筛选条件:', filters)
 
-    // 过滤空字符串参数，确保后端接收到正确的值
-    const params = {
-      ...filters,
-      subject: filters.subject && filters.subject.trim() !== '' ? filters.subject : undefined
-    }
-    console.log('实际发送参数:', params)
-
-    const res = await getRandomQuestion(params)
-    console.log('接收到后端响应:', res)
-    if (!res.data) {
-      message.warning('没有找到符合条件的题目')
+    // 获取选择的科目
+    const subject = filters.subject && filters.subject.trim() !== '' ? filters.subject : null
+    
+    if (!subject) {
+      // 如果未选择科目，使用原有的随机抽题模式
+      const params = { ...filters, subject: undefined }
+      const res = await getRandomQuestion(params)
+      if (!res.data) {
+        message.warning('没有找到符合条件的题目')
+        return
+      }
+      currentQuestion.value = res.data
+      practiceStore.setCurrentQuestion(res.data)
+      userAnswer.value = null
+      selectedAnswers.value = []
+      
+      // 添加到做题历史
+      addToHistory(res.data)
+      
       return
     }
-    console.log('获取到题目:', res.data)
-    console.log('题目ID:', res.data.id)
-    console.log('题目类型:', res.data.type)
-    console.log('题目科目:', res.data.subject)
-    console.log('题目内容:', res.data.content)
-    console.log('选项数据:', res.data.options)
-    console.log('选项类型:', typeof res.data.options, Array.isArray(res.data.options))
-    console.log('============================')
+
+    // 使用轮次 API
+    currentSubject.value = subject
+    const res = await startRound(subject)
+    console.log('轮次响应:', res)
     
-    currentQuestion.value = res.data
-    practiceStore.setCurrentQuestion(res.data)
+    if (!res.data || !res.data.question) {
+      message.warning('该科目暂无题目')
+      return
+    }
+    
+    // 更新轮次状态
+    currentQuestion.value = res.data.question
+    currentIndex.value = res.data.currentIndex
+    totalCount.value = res.data.totalCount
+    roundNumber.value = res.data.roundNumber
+    isRoundFinished.value = res.data.isFinished
+    
+    practiceStore.setCurrentQuestion(res.data.question)
     userAnswer.value = null
-    selectedAnswers.value = [] // 重置多选答案
+    selectedAnswers.value = []
     
-    // 检查选择题/多选题是否有有效选项
-    const needsOptions = ['single-choice', 'multiple-choice', 'choice'].includes(res.data.type)
+    // 添加到做题历史
+    addToHistory(res.data.question)
+    
+    console.log(`轮次进度: ${currentIndex.value + 1}/${totalCount.value}, 第${roundNumber.value}轮`)
+    
+    // 检查选择题是否有有效选项
+    const needsOptions = ['single-choice', 'multiple-choice', 'choice'].includes(res.data.question.type)
     if (needsOptions) {
-      // 等待下一个tick，让computed属性计算完成
       await nextTick()
       if (options.value.length === 0) {
-        console.error('题目选项无效，自动跳过', res.data)
+        console.error('题目选项无效，自动跳过', res.data.question)
         message.warning('题目数据有误，正在获取下一题...')
-        // 延迟后自动获取下一题
-        setTimeout(() => {
-          startPractice()
-        }, 1000)
+        setTimeout(() => nextQuestion(), 1000)
       }
     }
   } catch (error) {
@@ -612,6 +745,13 @@ const submitAnswer = async () => {
       costTime: 0
     })
     practiceStore.submitAnswer(userAnswer.value)
+    
+    // 保存到做题历史（用于上一题导航）
+    // 如果当前不在历史末尾，说明是回顾旧题后提交了新答案，更新该记录
+    if (historyIndex.value >= 0 && historyIndex.value < practiceHistory.value.length) {
+      practiceHistory.value[historyIndex.value].userAnswer = userAnswer.value
+    }
+    
     if (isCorrect.value) message.success('回答正确！')
     else message.error('回答错误！')
   } catch (error) {
@@ -619,12 +759,240 @@ const submitAnswer = async () => {
   }
 }
 
+// 添加题目到做题历史
+const addToHistory = (question) => {
+  // 如果不在历史末尾，截断后面的历史（新分支）
+  if (historyIndex.value < practiceHistory.value.length - 1) {
+    practiceHistory.value = practiceHistory.value.slice(0, historyIndex.value + 1)
+  }
+  practiceHistory.value.push({
+    question: question,
+    userAnswer: null
+  })
+  historyIndex.value = practiceHistory.value.length - 1
+}
+
+// 上一题（从历史记录中获取）
+const goToPrevQuestion = () => {
+  if (historyIndex.value <= 0) {
+    message.info('已是第一题')
+    return
+  }
+  
+  historyIndex.value--
+  const record = practiceHistory.value[historyIndex.value]
+  
+  // 恢复题目和已选答案
+  currentQuestion.value = record.question
+  practiceStore.setCurrentQuestion(record.question)
+  
+  // 恢复用户之前的选择
+  if (record.userAnswer) {
+    userAnswer.value = record.userAnswer
+    practiceStore.showAnalysis = true // 显示解析（因为已经答过）
+  } else {
+    userAnswer.value = null
+    practiceStore.showAnalysis = false
+  }
+  selectedAnswers.value = []
+  
+  message.info(`返回第 ${historyIndex.value + 1} 题`)
+}
+
+// 下一题（在历史记录中前进）
+const goToNextHistoryQuestion = () => {
+  if (historyIndex.value >= practiceHistory.value.length - 1) {
+    // 已经到历史末尾，退出回顾模式，获取新题
+    message.info('已到最新题目，继续做新题')
+    nextQuestion()
+    return
+  }
+  
+  historyIndex.value++
+  const record = practiceHistory.value[historyIndex.value]
+  
+  // 恢复题目和已选答案
+  currentQuestion.value = record.question
+  practiceStore.setCurrentQuestion(record.question)
+  
+  // 恢复用户之前的选择
+  if (record.userAnswer) {
+    userAnswer.value = record.userAnswer
+    practiceStore.showAnalysis = true
+  } else {
+    userAnswer.value = null
+    practiceStore.showAnalysis = false
+  }
+  selectedAnswers.value = []
+  
+  message.info(`前进到第 ${historyIndex.value + 1} 题`)
+}
+
 const nextQuestion = async () => {
   practiceStore.reset()
   userAnswer.value = null
-  selectedAnswers.value = [] // 重置多选答案
-  await startPractice()
+  selectedAnswers.value = []
+  
+  // 错题练习模式
+  if (isWrongBookMode.value) {
+    try {
+      const res = await nextWrongQuestion({
+        subject: wrongBookSubject.value,
+        currentQuestionId: currentQuestion.value.id
+      })
+      
+      if (res.data.isFinished) {
+        dialog.success({
+          title: '🎉 恭喜完成！',
+          content: `错题练习已全部完成！`,
+          positiveText: '返回错题本',
+          negativeText: '继续练习',
+          onPositiveClick: () => {
+            router.push('/wrong-book')
+          },
+          onNegativeClick: () => {
+            isWrongBookMode.value = false
+            wrongBookSubject.value = null
+            router.replace('/practice')
+          }
+        })
+        return
+      }
+      
+      currentQuestion.value = res.data.question
+      currentIndex.value = res.data.currentIndex
+      totalCount.value = res.data.totalCount
+      practiceStore.setCurrentQuestion(res.data.question)
+      addToHistory(res.data.question)
+      
+    } catch (error) {
+      console.error('获取下一题失败:', error)
+      message.error('获取下一题失败')
+    }
+    return
+  }
+  
+  // 如果没有选择科目（随机模式），使用原有逻辑
+  if (!currentSubject.value) {
+    await startPractice()
+    return
+  }
+  
+  try {
+    const res = await nextRoundQuestion(currentSubject.value)
+    console.log('下一题响应:', res)
+    
+    // 检查是否完成本轮
+    if (res.data.isFinished && !res.data.question) {
+      isRoundFinished.value = true
+      // 显示完成对话框
+      dialog.success({
+        title: '🎉 恭喜完成！',
+        content: `您已完成第 ${roundNumber.value} 轮练习，共 ${totalCount.value} 道题目！是否开始新一轮？`,
+        positiveText: '开始新一轮',
+        negativeText: '返回首页',
+        onPositiveClick: async () => {
+          const resetRes = await resetRound(currentSubject.value)
+          if (resetRes.data && resetRes.data.question) {
+            currentQuestion.value = resetRes.data.question
+            currentIndex.value = 0
+            totalCount.value = resetRes.data.totalCount
+            roundNumber.value = resetRes.data.roundNumber
+            isRoundFinished.value = false
+            practiceStore.setCurrentQuestion(resetRes.data.question)
+            message.success(`已开始第 ${roundNumber.value} 轮练习！`)
+          }
+        },
+        onNegativeClick: () => {
+          exitPractice()
+        }
+      })
+      return
+    }
+    
+    // 更新状态
+    if (res.data.question) {
+      currentQuestion.value = res.data.question
+      currentIndex.value = res.data.currentIndex
+      practiceStore.setCurrentQuestion(res.data.question)
+      
+      // 添加到做题历史
+      addToHistory(res.data.question)
+    } else {
+      // 没有返回题目，可能是本轮已完成
+      message.info('本轮已完成，请开始新一轮')
+    }
+    
+  } catch (error) {
+    console.error('获取下一题失败:', error)
+    message.error('获取下一题失败')
+  }
 }
+
+// 上一题
+const prevQuestion = async () => {
+  if (!currentSubject.value || currentIndex.value <= 0) return
+  
+  practiceStore.reset()
+  userAnswer.value = null
+  selectedAnswers.value = []
+  
+  try {
+    const res = await prevRoundQuestion(currentSubject.value)
+    console.log('上一题响应:', res)
+    
+    if (res.data.question) {
+      currentQuestion.value = res.data.question
+      currentIndex.value = res.data.currentIndex
+      practiceStore.setCurrentQuestion(res.data.question)
+    } else {
+      message.info('已是第一题')
+    }
+  } catch (error) {
+    console.error('获取上一题失败:', error)
+    message.error('获取上一题失败')
+  }
+}
+
+// 搜索方法
+const handleSearch = async () => {
+  if (!searchKeyword.value.trim()) {
+    message.warning('请输入搜索关键词')
+    return
+  }
+  
+  try {
+    const res = await searchQuestions({
+      keyword: searchKeyword.value,
+      page: 1,
+      size: 10
+    })
+    if (res.data && res.data.records) {
+      searchResults.value = res.data.records
+      if (res.data.records.length === 0) {
+        message.info('未找到相关题目')
+      }
+    }
+  } catch (error) {
+    console.error('搜索失败:', error)
+    message.error('搜索失败')
+  }
+}
+
+// 跳转到指定题目
+const jumpToQuestion = (question) => {
+  showSearchModal.value = false
+  searchKeyword.value = ''
+  searchResults.value = []
+  
+  currentQuestion.value = question
+  practiceStore.setCurrentQuestion(question)
+  practiceStore.reset()
+  userAnswer.value = null
+  selectedAnswers.value = []
+  message.success(`已跳转到题目 #${question.id}`)
+}
+
 
 const exitPractice = () => {
   dialog.warning({
@@ -713,12 +1081,88 @@ const exitPractice = () => {
 /* Question Wrapper */
 .question-wrapper { width: 100%; max-width: 760px; position: relative; }
 
-.focus-header { 
-    display: flex; 
-    justify-content: space-between; 
-    align-items: center; 
-    margin-bottom: 12px; 
-    padding: 0 12px;
+/* 顶部工具栏 */
+.practice-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  padding: 8px 0;
+}
+
+.toolbar-left {
+  display: flex;
+  align-items: center;
+}
+
+.progress-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: #fff;
+  padding: 8px 20px;
+  border: 2px solid #2c3e50;
+  border-radius: 255px 15px 225px 15px / 15px 225px 15px 255px;
+  box-shadow: 3px 3px 0px rgba(0,0,0,0.1);
+  font-family: 'Patrick Hand', cursive;
+  transition: all 0.2s ease;
+}
+
+.progress-chip:hover {
+  transform: scale(1.02) rotate(-1deg);
+  box-shadow: 4px 4px 0px rgba(0,0,0,0.15);
+}
+
+.chip-icon {
+  font-size: 18px;
+}
+
+.chip-text {
+  font-size: 18px;
+  font-weight: 700;
+  color: #2c3e50;
+  letter-spacing: 0.5px;
+}
+
+.chip-divider {
+  color: #cbd5e1;
+  font-weight: 300;
+}
+
+.chip-total {
+  font-size: 14px;
+  color: #64748b;
+}
+
+.toolbar-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.toolbar-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  background: rgba(255,255,255,0.9);
+  border: 2px solid #e2e8f0;
+  color: #64748b;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+}
+
+.toolbar-btn:hover {
+  background: #f8fafc;
+  border-color: #3b82f6;
+  color: #3b82f6;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.2);
+}
+
+.toolbar-btn.close:hover {
+  border-color: #ef4444;
+  color: #ef4444;
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.2);
 }
 .progress-info { display: flex; align-items: center; gap: 12px; flex: 1; }
 .progress-label { font-size: 14px; font-weight: 700; color: #57606a; transform: rotate(-2deg); }
@@ -741,6 +1185,88 @@ const exitPractice = () => {
 .close-btn:hover { 
   transform: rotate(90deg) scale(1.1); 
   color: #ef4444;
+}
+
+/* Round Badge */
+.round-badge {
+  font-size: 12px;
+  font-weight: 700;
+  color: #fff;
+  background: linear-gradient(135deg, #10b981, #059669);
+  padding: 2px 8px;
+  border-radius: 12px;
+  margin-left: 8px;
+  transform: rotate(-2deg);
+}
+
+/* Search Button */
+.search-btn {
+  color: #2c3e50;
+  margin-right: 8px;
+  transition: all 0.2s;
+}
+.search-btn:hover {
+  transform: scale(1.1);
+  color: #3b82f6;
+}
+
+/* Search Modal */
+.search-modal-content {
+  font-family: 'Patrick Hand', cursive;
+}
+.search-results {
+  margin-top: 20px;
+  max-height: 300px;
+  overflow-y: auto;
+}
+.search-result-item {
+  padding: 12px;
+  border: 2px solid #e2e8f0;
+  border-radius: 8px;
+  margin-bottom: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.search-result-item:hover {
+  border-color: #3b82f6;
+  background: #f0f9ff;
+}
+.result-id {
+  font-weight: bold;
+  color: #3b82f6;
+  flex-shrink: 0;
+}
+.result-content {
+  color: #64748b;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Navigation Buttons */
+.nav-btn {
+  font-family: 'Patrick Hand', cursive;
+  font-size: 16px;
+  color: #64748b;
+  border: 2px solid #cbd5e1;
+  border-radius: 20px;
+  transition: all 0.2s;
+}
+.nav-btn:hover:not(:disabled) {
+  color: #2c3e50;
+  border-color: #2c3e50;
+  transform: translateX(-2px);
+}
+.nav-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.nav-placeholder {
+  width: 100px;
 }
 
 /* Paper Card Effect - The Main Stage */
@@ -797,9 +1323,9 @@ const exitPractice = () => {
 .subject-text { margin-left: 10px; font-size: 14px; color: #57606a; font-weight: 700; font-family: 'Gochi Hand', cursive; letter-spacing: 1px; }
 
 .question-content { 
-  font-size: 22px; /* 字体调小 */
+  font-size: 24px; /* 恢复较大的字体 */
   font-weight: 600; 
-  line-height: 1.5; 
+  line-height: 1.6; 
   color: #2c3e50; 
   margin-bottom: 32px; 
   font-family: 'Didact Gothic', 'Patrick Hand', sans-serif;

@@ -67,15 +67,20 @@
 - ⚡ 实时答题反馈
 - 💡 答案解析展示
 - 📊 答题进度追踪
+- 🔄 轮次刷题模式
 - 🎨 精美的答题界面
+- 📝 错题本专项练习
 
 </td>
     <td width="50%">
 
 ### 📖 错题本与统计
-- ❌ 错题自动收录
+- ❌ 错题自动收录到错题本
 - 📋 错题列表分页展示
 - 🔄 错题重新练习
+- 📚 按科目分类复习错题
+- 🎯 错题专项练习模式
+- ✅ 标记已掌握移除错题
 - 📊 练习统计分析
 - 📈 正确率趋势图
 - 🎯 薄弱知识点分析
@@ -182,7 +187,9 @@ COLLATE utf8mb4_unicode_ci;
 - `question`: 题目表
 - `subject`: 科目表
 - `practice_record`: 练习记录表
+- `practice_round`: 练习轮次表
 - `user_question_stats`: 用户刷题统计表
+- `wrong_book`: 错题本表
 - `user_login_log`: 登录日志表
 - `user_operation_log`: 操作日志表
 

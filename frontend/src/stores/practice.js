@@ -11,9 +11,9 @@ export const usePracticeStore = defineStore('practice', {
 
   getters: {
     totalPracticeCount: (state) => state.practiceHistory.length,
-    correctCount: (state) => 
+    correctCount: (state) =>
       state.practiceHistory.filter(item => item.isCorrect).length,
-    wrongCount: (state) => 
+    wrongCount: (state) =>
       state.practiceHistory.filter(item => !item.isCorrect).length,
     correctRate: (state) => {
       if (state.practiceHistory.length === 0) return 0
@@ -32,6 +32,12 @@ export const usePracticeStore = defineStore('practice', {
     submitAnswer(answer) {
       this.userAnswer = answer
       this.showAnalysis = true
+
+      // 添加 null 检查
+      if (!this.currentQuestion) {
+        console.warn('submitAnswer: currentQuestion 为 null')
+        return
+      }
 
       const isCorrect = answer === this.currentQuestion.answer
 

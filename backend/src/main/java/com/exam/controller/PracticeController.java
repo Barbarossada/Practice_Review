@@ -1,19 +1,24 @@
 package com.exam.controller;
 
 import cn.dev33.satoken.stp.StpUtil;
+import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.exam.common.PageResult;
 import com.exam.common.Result;
 import com.exam.entity.PracticeRecord;
+import com.exam.entity.PracticeRound;
 import com.exam.entity.Question;
 import com.exam.service.PracticeRecordService;
+import com.exam.service.PracticeRoundService;
 import com.exam.service.QuestionService;
 import com.exam.service.UserQuestionStatsService;
+import com.exam.service.WrongBookService;
 import com.exam.dto.DashboardDTO;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -26,6 +31,7 @@ import java.util.stream.Collectors;
  * @author Exam System
  * @since 2025-12-19
  * @modified 2025-12-27 添加用户隔离
+ * @modified 2026-01-03 添加轮次刷题和错题本功能
  */
 @RestController
 @RequestMapping("/api/practice")
@@ -39,6 +45,12 @@ public class PracticeController {
 
     @Autowired
     private UserQuestionStatsService userQuestionStatsService;
+
+    @Autowired
+    private PracticeRoundService practiceRoundService;
+
+    @Autowired
+    private WrongBookService wrongBookService;
 
     /**
      * 获取当前登录用户ID
@@ -90,6 +102,11 @@ public class PracticeController {
 
         // 更新用户题目统计（替代原来的全局统计）
         userQuestionStatsService.updatePracticeStats(userId, record.getQuestionId(), isCorrect);
+        
+        // 答错时自动添加到错题本
+        if (!isCorrect) {
+            wrongBookService.addWrongQuestion(userId, record.getQuestionId());
+        }
 
         // 返回结果
         Map<String, Object> resultMap = new HashMap<>();
@@ -292,5 +309,382 @@ public class PracticeController {
         );
         
         return Result.success(pageResult);
+    }
+
+    // ==================== 轮次刷题 API ====================
+
+    /**
+     * 开始或继续某科目的练习轮次
+     * 如果有未完成的轮次则继续，否则创建新轮次（题目随机打乱）
+     * 
+     * @param subject 科目名称
+     * @return 当前题目
+     */
+    @PostMapping("/round/start")
+    public Result<Map<String, Object>> startRound(@RequestParam String subject) {
+        Long userId = getCurrentUserId();
+        
+        Question question = practiceRoundService.startOrContinueRound(userId, subject);
+        if (question == null) {
+            return Result.error("该科目暂无题目");
+        }
+        
+        PracticeRound progress = practiceRoundService.getProgress(userId, subject);
+        
+        Map<String, Object> result = new HashMap<>();
+        result.put("question", question);
+        result.put("currentIndex", progress.getCurrentIndex());
+        result.put("totalCount", progress.getTotalCount());
+        result.put("roundNumber", progress.getRoundNumber());
+        result.put("isFinished", progress.getIsFinished());
+        
+        return Result.success(result);
+    }
+
+    /**
+     * 获取轮次中的下一题
+     * 
+     * @param subject 科目名称
+     * @return 下一题，如果已完成本轮则返回完成提示
+     */
+    @GetMapping("/round/next")
+    public Result<Map<String, Object>> nextRoundQuestion(@RequestParam String subject) {
+        Long userId = getCurrentUserId();
+        
+        Question question = practiceRoundService.nextQuestion(userId, subject);
+        PracticeRound progress = practiceRoundService.getProgress(userId, subject);
+        
+        Map<String, Object> result = new HashMap<>();
+        result.put("question", question);
+        result.put("currentIndex", progress.getCurrentIndex());
+        result.put("totalCount", progress.getTotalCount());
+        result.put("isFinished", progress.getIsFinished());
+        
+        if (question == null && progress.getIsFinished()) {
+            result.put("message", "恭喜！本轮已全部完成，共 " + progress.getTotalCount() + " 道题目");
+        }
+        
+        return Result.success(result);
+    }
+
+    /**
+     * 获取轮次中的上一题
+     * 
+     * @param subject 科目名称
+     * @return 上一题
+     */
+    @GetMapping("/round/prev")
+    public Result<Map<String, Object>> prevRoundQuestion(@RequestParam String subject) {
+        Long userId = getCurrentUserId();
+        
+        Question question = practiceRoundService.prevQuestion(userId, subject);
+        PracticeRound progress = practiceRoundService.getProgress(userId, subject);
+        
+        Map<String, Object> result = new HashMap<>();
+        result.put("question", question);
+        result.put("currentIndex", progress != null ? progress.getCurrentIndex() : 0);
+        result.put("totalCount", progress != null ? progress.getTotalCount() : 0);
+        
+        if (question == null) {
+            result.put("message", "已是第一题");
+        }
+        
+        return Result.success(result);
+    }
+
+    /**
+     * 获取当前轮次进度
+     * 
+     * @param subject 科目名称
+     * @return 进度信息
+     */
+    @GetMapping("/round/progress")
+    public Result<Map<String, Object>> getRoundProgress(@RequestParam String subject) {
+        Long userId = getCurrentUserId();
+        
+        PracticeRound progress = practiceRoundService.getProgress(userId, subject);
+        
+        Map<String, Object> result = new HashMap<>();
+        if (progress == null) {
+            result.put("hasRound", false);
+        } else {
+            result.put("hasRound", true);
+            result.put("currentIndex", progress.getCurrentIndex());
+            result.put("totalCount", progress.getTotalCount());
+            result.put("roundNumber", progress.getRoundNumber());
+            result.put("isFinished", progress.getIsFinished());
+            // 当前进度百分比
+            int percent = progress.getTotalCount() > 0 
+                ? (int) ((progress.getCurrentIndex() + 1) * 100.0 / progress.getTotalCount()) 
+                : 0;
+            result.put("progressPercent", percent);
+        }
+        
+        return Result.success(result);
+    }
+
+    /**
+     * 重置轮次（开始新一轮）
+     * 
+     * @param subject 科目名称
+     * @return 新轮次的第一题
+     */
+    @PostMapping("/round/reset")
+    public Result<Map<String, Object>> resetRound(@RequestParam String subject) {
+        Long userId = getCurrentUserId();
+        
+        Question question = practiceRoundService.resetRound(userId, subject);
+        if (question == null) {
+            return Result.error("该科目暂无题目");
+        }
+        
+        PracticeRound progress = practiceRoundService.getProgress(userId, subject);
+        
+        Map<String, Object> result = new HashMap<>();
+        result.put("question", question);
+        result.put("currentIndex", 0);
+        result.put("totalCount", progress.getTotalCount());
+        result.put("roundNumber", progress.getRoundNumber());
+        result.put("message", "已开始第 " + progress.getRoundNumber() + " 轮练习");
+        
+        return Result.success(result);
+    }
+
+    // ==================== 搜索 API ====================
+
+    /**
+     * 搜索题目（按题号或内容关键词）
+     * 
+     * @param keyword 搜索关键词（可以是题目ID或内容片段）
+     * @param subject 科目筛选（可选）
+     * @param page 页码
+     * @param size 每页大小
+     * @return 搜索结果
+     */
+    @GetMapping("/search")
+    public Result<PageResult<Question>> searchQuestions(
+            @RequestParam String keyword,
+            @RequestParam(required = false) String subject,
+            @RequestParam(defaultValue = "1") Integer page,
+            @RequestParam(defaultValue = "10") Integer size) {
+        
+        Page<Question> questionPage = new Page<>(page, size);
+        QueryWrapper<Question> wrapper = new QueryWrapper<>();
+        
+        // 判断是否为数字（题目ID）
+        if (keyword.matches("\\d+")) {
+            wrapper.eq("id", Long.parseLong(keyword));
+        } else {
+            // 按内容模糊搜索
+            wrapper.like("content", keyword);
+        }
+        
+        // 科目筛选
+        if (StrUtil.isNotBlank(subject)) {
+            wrapper.eq("subject", subject);
+        }
+        
+        wrapper.orderByDesc("id");
+        questionService.page(questionPage, wrapper);
+        
+        PageResult<Question> result = new PageResult<>(
+                questionPage.getRecords(),
+                questionPage.getTotal(),
+                questionPage.getCurrent(),
+                questionPage.getSize()
+        );
+        
+        return Result.success(result);
+    }
+
+    // ==================== 错题本增强 API ====================
+
+    /**
+     * 手动添加题目到错题本
+     * 
+     * @param questionId 题目ID
+     * @return 操作结果
+     */
+    @PostMapping("/wrong-book/add/{questionId}")
+    public Result<String> addToWrongBook(@PathVariable Long questionId) {
+        Long userId = getCurrentUserId();
+        
+        Question question = questionService.getById(questionId);
+        if (question == null) {
+            return Result.error("题目不存在");
+        }
+        
+        wrongBookService.addWrongQuestion(userId, questionId);
+        return Result.success("已添加到错题本");
+    }
+
+    /**
+     * 标记错题已掌握
+     * 
+     * @param questionId 题目ID
+     * @return 操作结果
+     */
+    @PostMapping("/wrong-book/master/{questionId}")
+    public Result<String> markMastered(@PathVariable Long questionId) {
+        Long userId = getCurrentUserId();
+        
+        wrongBookService.markMastered(userId, questionId);
+        return Result.success("已标记为掌握");
+    }
+
+    /**
+     * 获取错题本分页列表
+     * 
+     * @param page 页码
+     * @param size 每页大小
+     * @return 错题分页数据
+     */
+    @GetMapping("/wrong-book/list")
+    public Result<PageResult<Question>> getWrongBookPage(
+            @RequestParam(defaultValue = "1") Integer page,
+            @RequestParam(defaultValue = "10") Integer size) {
+        
+        Long userId = getCurrentUserId();
+        Page<Question> questionPage = wrongBookService.getWrongQuestionPage(userId, (long) page, (long) size);
+        
+        PageResult<Question> result = new PageResult<>(
+                questionPage.getRecords(),
+                questionPage.getTotal(),
+                questionPage.getCurrent(),
+                questionPage.getSize()
+        );
+        
+        return Result.success(result);
+    }
+
+    /**
+     * 获取错题本按科目的统计信息
+     * 
+     * @return 各科目的错题数量统计
+     */
+    @GetMapping("/wrong-book/subjects")
+    public Result<Map<String, Long>> getWrongBookSubjects() {
+        Long userId = getCurrentUserId();
+        
+        // 获取错题本中的所有题目ID（使用 wrong_book 表）
+        List<Long> wrongQuestionIds = wrongBookService.getWrongQuestionIds(userId);
+        
+        if (wrongQuestionIds.isEmpty()) {
+            return Result.success(new HashMap<>());
+        }
+        
+        // 查询错题的科目分布
+        List<Question> questions = questionService.listByIds(wrongQuestionIds);
+        Map<String, Long> subjectCount = questions.stream()
+                .collect(Collectors.groupingBy(Question::getSubject, Collectors.counting()));
+        
+        return Result.success(subjectCount);
+    }
+
+    /**
+     * 开始错题专项练习（按科目）
+     * 
+     * @param subject 科目名称（可选，不传则练习所有错题）
+     * @return 第一道错题
+     */
+    @PostMapping("/wrong-book/practice")
+    public Result<Map<String, Object>> startWrongBookPractice(@RequestParam(required = false) String subject) {
+        Long userId = getCurrentUserId();
+        
+        // 获取错题本中的题目ID列表（使用 wrong_book 表）
+        List<Long> wrongQuestionIds = wrongBookService.getWrongQuestionIds(userId);
+        
+        if (wrongQuestionIds.isEmpty()) {
+            return Result.error("暂无错题");
+        }
+        
+        // 如果指定了科目，筛选该科目的错题
+        List<Question> questions;
+        if (StrUtil.isNotBlank(subject)) {
+            QueryWrapper<Question> wrapper = new QueryWrapper<>();
+            wrapper.in("id", wrongQuestionIds)
+                   .eq("subject", subject);
+            questions = questionService.list(wrapper);
+        } else {
+            questions = questionService.listByIds(wrongQuestionIds);
+        }
+        
+        if (questions.isEmpty()) {
+            return Result.error("该科目暂无错题");
+        }
+        
+        // 随机打乱顺序
+        Collections.shuffle(questions);
+        
+        Map<String, Object> result = new HashMap<>();
+        result.put("question", questions.get(0));
+        result.put("totalCount", questions.size());
+        result.put("subject", subject);
+        result.put("currentIndex", 0);
+        
+        return Result.success(result);
+    }
+
+    /**
+     * 获取错题练习的下一题
+     * 
+     * @param subject 科目名称（可选）
+     * @param currentQuestionId 当前题目ID
+     * @return 下一道错题
+     */
+    @GetMapping("/wrong-book/practice/next")
+    public Result<Map<String, Object>> nextWrongQuestion(
+            @RequestParam(required = false) String subject,
+            @RequestParam Long currentQuestionId) {
+        Long userId = getCurrentUserId();
+        
+        // 获取错题本中的题目ID列表（使用 wrong_book 表）
+        List<Long> wrongQuestionIds = wrongBookService.getWrongQuestionIds(userId);
+        
+        if (wrongQuestionIds.isEmpty()) {
+            return Result.error("暂无错题");
+        }
+        
+        // 筛选科目
+        List<Question> questions;
+        if (StrUtil.isNotBlank(subject)) {
+            QueryWrapper<Question> wrapper = new QueryWrapper<>();
+            wrapper.in("id", wrongQuestionIds)
+                   .eq("subject", subject);
+            questions = questionService.list(wrapper);
+        } else {
+            questions = questionService.listByIds(wrongQuestionIds);
+        }
+        
+        if (questions.isEmpty()) {
+            return Result.error("暂无更多错题");
+        }
+        
+        // 找到当前题目的索引
+        int currentIndex = -1;
+        for (int i = 0; i < questions.size(); i++) {
+            if (questions.get(i).getId().equals(currentQuestionId)) {
+                currentIndex = i;
+                break;
+            }
+        }
+        
+        // 获取下一题
+        int nextIndex = currentIndex + 1;
+        if (nextIndex >= questions.size()) {
+            Map<String, Object> result = new HashMap<>();
+            result.put("question", null);
+            result.put("isFinished", true);
+            result.put("message", "恭喜！错题已全部练习完成");
+            return Result.success(result);
+        }
+        
+        Map<String, Object> result = new HashMap<>();
+        result.put("question", questions.get(nextIndex));
+        result.put("currentIndex", nextIndex);
+        result.put("totalCount", questions.size());
+        result.put("isFinished", false);
+        
+        return Result.success(result);
     }
 }
