@@ -613,8 +613,11 @@ public class PracticeController {
             return Result.error("该科目暂无错题");
         }
         
-        // 随机打乱顺序
-        Collections.shuffle(questions);
+        // 按 wrongQuestionIds 的顺序对 questions 进行排序（确保顺序一致性）
+        questions.sort(java.util.Comparator.comparingInt(q -> wrongQuestionIds.indexOf(q.getId())));
+        
+        // 移除随机打乱，因为无状态的 next 接口无法获知打乱后的顺序
+        // Collections.shuffle(questions);
         
         Map<String, Object> result = new HashMap<>();
         result.put("question", questions.get(0));
@@ -659,6 +662,9 @@ public class PracticeController {
         if (questions.isEmpty()) {
             return Result.error("暂无更多错题");
         }
+
+        // 关键修复：必须再次按 wrongQuestionIds 排序，确保与 start 接口的顺序一致
+        questions.sort(java.util.Comparator.comparingInt(q -> wrongQuestionIds.indexOf(q.getId())));
         
         // 找到当前题目的索引
         int currentIndex = -1;

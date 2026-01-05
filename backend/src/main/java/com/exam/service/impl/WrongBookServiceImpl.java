@@ -36,8 +36,8 @@ public class WrongBookServiceImpl extends ServiceImpl<WrongBookMapper, WrongBook
         // 1. 分页查询错题本记录
         Page<WrongBook> wrongBookPage = new Page<>(page, size);
         LambdaQueryWrapper<WrongBook> wrapper = new LambdaQueryWrapper<>();
+        // 显示所有错题，不再按熟练度过滤（用户要求错题永久保留直到手动删除）
         wrapper.eq(WrongBook::getUserId, userId)
-               .lt(WrongBook::getMasteryLevel, 100) // 排除已掌握的题目
                .orderByDesc(WrongBook::getUpdateTime);
         
         this.page(wrongBookPage, wrapper);

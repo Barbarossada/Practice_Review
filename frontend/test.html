@@ -1,0 +1,485 @@
+<link rel="dns-prefetch" href="//cdn.jsdelivr.net">
+<link rel="dns-prefetch" href="//ashlord.com">
+<link rel="dns-prefetch" href="//cdn.nodeimage.com">
+<link rel="dns-prefetch" href="//img.disue.com">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+
+<style>
+    /* --- 1. 全局布局与安全 (防交互/防保存) --- */
+    html, body {
+        width: 100%; min-height: 100%;
+        margin: 0; padding: 0;
+        background: transparent !important;
+        overflow-x: hidden;
+        -webkit-font-smoothing: antialiased;
+        scroll-behavior: smooth;
+
+        /* 禁止长按、选择、拖拽 */
+        -webkit-touch-callout: none !important;
+        -webkit-user-select: none !important;
+        user-select: none !important;
+        -webkit-user-drag: none !important;
+    }
+
+    /* 允许部分区域选文字(如IP) */
+    .server-card p, .traffic-bar, #capsule-bar {
+        -webkit-user-select: text !important;
+        user-select: text !important;
+        pointer-events: auto !important;
+    }
+
+    /* 图片幽灵化：点击穿透，无法保存 */
+    img {
+        pointer-events: none !important;
+        -webkit-user-drag: none !important;
+        user-select: none !important;
+    }
+
+    /* 确保交互组件可点击 */
+    a, button, input, .server-card, .traffic-bar, #capsule-bar, #back-top-btn {
+        pointer-events: auto !important;
+        touch-action: manipulation;
+        position: relative;
+        z-index: 10;
+    }
+
+    /* --- 2. 背景层 --- */
+    #fixed-background {
+        position: fixed;
+        top: 0; left: 0; width: 100%; height: 100%;
+        z-index: -999;
+        background-size: cover;
+        background-position: center center;
+        background-repeat: no-repeat;
+        transform: translateZ(0);
+        pointer-events: none;
+    }
+
+    /* --- 3. 特效画布 --- */
+    canvas, .js-cursor-container {
+        position: fixed !important;
+        top: 0 !important; left: 0 !important;
+        width: 100vw !important; height: 100vh !important;
+        z-index: 9999 !important;
+        pointer-events: none !important;
+        display: block !important;
+    }
+
+    /* --- 4. UI组件样式 --- */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background-color: rgba(128, 128, 128, 0.4); border-radius: 4px; }
+
+    /* 流量条样式优化 */
+    .traffic-bar {
+        transition: opacity 0.3s ease;
+        animation: fadeInBar 0.5s ease-out forwards;
+        opacity: 0; /* 初始隐藏，动画显示 */
+    }
+    @keyframes fadeInBar { to { opacity: 1; } }
+
+    /* IP 胶囊 */
+    #capsule-bar {
+        position: fixed;
+        bottom: 30px; left: 50%;
+        transform: translateX(-50%) translateY(30px);
+        z-index: 999;
+        display: flex; align-items: center;
+        padding: 8px 15px; gap: 8px;
+        background: rgba(255, 255, 255, 0.95);
+        backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+        border: 1px solid rgba(0,0,0,0.05);
+        border-radius: 50px;
+        box-shadow: 0 8px 30px rgba(0, 0, 0, 0.15);
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        font-size: 13px; white-space: nowrap; max-width: 92vw;
+        opacity: 0; visibility: hidden;
+        transition: opacity 1s ease, transform 1s cubic-bezier(0.2, 0.8, 0.2, 1), visibility 1s;
+    }
+    #capsule-bar.active { opacity: 1; visibility: visible; transform: translateX(-50%) translateY(0); }
+
+    .capsule-icon { width: 16px; height: 16px; color: #1a73e8; flex-shrink: 0; }
+    .label-blue { color: #1a73e8; font-weight: 600; margin-right: 3px; }
+    .label-dark { color: #333; font-weight: 600; margin-right: 3px; }
+    .info-val { color: #333; }
+    .capsule-divider { width: 1px; height: 10px; background: #ccc; margin: 0 4px; }
+    .close-btn { margin-left: 5px; padding: 2px; color: #999; cursor: pointer; display: flex; }
+
+    @media (max-width: 500px) {
+        #capsule-bar { padding: 6px 12px; font-size: 11px; bottom: 20px; gap: 6px; }
+        .label-blue, .label-dark { margin-right: 2px; }
+    }
+
+    #back-top-btn {
+        position: fixed; bottom: 30px; right: 20px;
+        z-index: 999;
+        width: 38px; height: 38px;
+        background: rgba(255,255,255,0.9); backdrop-filter: blur(10px);
+        border: 1px solid rgba(255,255,255,0.5);
+        border-radius: 50%; box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        display: flex; justify-content: center; align-items: center;
+        opacity: 0; visibility: hidden; transform: translateY(10px);
+        transition: all 0.3s; color: #333; cursor: pointer;
+    }
+    #back-top-btn.visible { opacity: 1; visibility: visible; transform: translateY(0); }
+
+    @media (prefers-color-scheme: dark) {
+        #capsule-bar, #back-top-btn { background: rgba(35, 35, 35, 0.85); border-color: rgba(255,255,255,0.1); color: #eee; }
+        .label-dark, .info-val { color: #eee; }
+        .label-blue, .capsule-icon { color: #50a0ff; }
+        #back-top-btn { color: #fff; }
+    }
+</style>
+
+<div id="fixed-background"></div>
+
+<div id="capsule-bar">
+    <svg class="capsule-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/></svg>
+    <div id="capsule-content" style="display:flex; align-items:center;">Loading...</div>
+    <div class="close-btn" onclick="KomariPlugins.closeCapsule()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+    </div>
+</div>
+
+<div id="back-top-btn" onclick="KomariPlugins.scrollToTop()">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M4 12l1.41 1.41L11 7.83V20h2V7.83l5.58 5.59L20 12l-8-8-8 8z"/></svg>
+</div>
+
+<span class="js-cursor-container"></span>
+
+<script>
+    // ------------------------------------------
+    // 用户配置
+    // ------------------------------------------
+    //window.CustomBackgroundImage = 'https://ashlord.com/upload/IMG_0946.png';
+    window.CustomBackgroundImage = 'https://img.disue.com/v2/V1pRksp.jpeg';
+    //window.CustomMobileBackgroundImage = 'https://ashlord.com/upload/IMG_3956.png';
+    window.CustomMobileBackgroundImage = 'https://img.disue.com/v2/f7jzfsR.jpeg';
+    window.CustomLogo = 'https://ashlord.com/upload/sakura.svg';
+    window.CustomDesc = '花开半夏，如诗如画。';
+    window.CustomIllustration = 'https://cdn.nodeimage.com/i/IXGoHGfuLJL0pyx4GxmNvGltPdbV5USV.gif';
+    //window.CustomIllustration = 'https://img.disue.com/v2/P6RE5Zl.gif';
+    window.CustomLinks = '[{"link":"https://xj.521258.xyz","name":"MyBlog🫵"}]';
+
+    window.DisableAnimatedMan = false;
+    window.FixedTopServerName = false;
+    window.ShowNetTransfer = true;
+    window.ForceShowServices = false;
+    try { document.title = document.title.replace(/ - Komari Monitor$/, ''); } catch(e) {}
+    window.KomariPlugins = {};
+
+    (function() {
+        // 1. 背景处理
+        function initBackground() {
+            const bgEl = document.getElementById('fixed-background');
+            const updateBg = () => {
+                const isMobile = window.innerWidth <= 768;
+                const imgUrl = isMobile ? (window.CustomMobileBackgroundImage || window.CustomBackgroundImage) : window.CustomBackgroundImage;
+                if(bgEl && imgUrl) bgEl.style.backgroundImage = `url('${imgUrl}')`;
+            };
+            window.addEventListener('resize', updateBg);
+            updateBg();
+        }
+        initBackground();
+
+        // 2. IP 胶囊 (修复版：增强位置获取逻辑)
+        let autoDismissTimer;
+        KomariPlugins.closeCapsule = function() {
+            const bar = document.getElementById('capsule-bar');
+            if(autoDismissTimer) clearTimeout(autoDismissTimer);
+            if(bar) {
+                bar.classList.remove('active');
+                setTimeout(() => { bar.style.visibility = 'hidden'; }, 1000);
+            }
+        };
+
+        KomariPlugins.scrollToTop = function() { window.scrollTo({ top: 0, behavior: 'smooth' }); };
+
+        function getOS() {
+            var u = navigator.userAgent;
+            if (!!u.match(/compatible/i) || u.match(/Windows/i)) return 'Windows';
+            if (!!u.match(/Macintosh/i) || u.match(/MacIntel/i)) return 'Mac';
+            if (!!u.match(/iphone/i) || u.match(/Ipad/i)) return 'iOS';
+            if (!!u.match(/android/i)) return 'Android';
+            return 'Linux';
+        }
+
+        function initCapsule() {
+            const bar = document.getElementById('capsule-bar');
+            const content = document.getElementById('capsule-content');
+            if(!bar || !content) return;
+
+            const render = (html) => {
+                content.innerHTML = html;
+                setTimeout(() => {
+                    bar.classList.add('active');
+                    autoDismissTimer = setTimeout(KomariPlugins.closeCapsule, 10000);
+                }, 1000);
+            };
+
+            // 核心修复逻辑
+            fetch('https://api-ipv4.ip.sb/geoip', { referrerPolicy: 'no-referrer' })
+                .then(res => res.json())
+                .then(data => {
+                    const isMobile = window.innerWidth <= 500;
+
+                    // 逻辑：优先城市 -> 其次省份 -> 再次国家代码 -> 最后 Unknown
+                    let loc = data.city || data.region || data.country_code || "Unknown";
+
+                    // 电脑端加前缀，手机端保持简洁
+                    if (!isMobile && data.country_code) {
+                        loc = `${data.country_code} ${data.city || ''}`;
+                    }
+
+                    render(`
+                    <div class="info-group"><span class="label-blue">IP:</span><span class="info-val">${data.ip}</span></div>
+                    <span class="capsule-divider"></span>
+                    <div class="info-group"><span class="label-dark">位置:</span><span class="info-val">${loc}</span></div>
+                    <span class="capsule-divider"></span>
+                    <div class="info-group"><span class="label-dark">设备:</span><span class="info-val">${getOS()}</span></div>
+                `);
+                })
+                .catch(() => {
+                    // 备用接口逻辑同步修复
+                    fetch('https://ipwho.is/?lang=zh-CN')
+                        .then(res => res.json())
+                        .then(data => {
+                            if(data.success) {
+                                const isMobile = window.innerWidth <= 500;
+                                let loc = data.city || data.region || data.country_code || "Unknown";
+                                if (!isMobile) loc = `${data.country_code} ${data.city}`;
+
+                                render(`
+                                <div class="info-group"><span class="label-blue">IP:</span><span class="info-val">${data.ip}</span></div>
+                                <span class="capsule-divider"></span>
+                                <div class="info-group"><span class="label-dark">Loc:</span><span class="info-val">${loc}</span></div>
+                                <span class="capsule-divider"></span>
+                                <div class="info-group"><span class="label-dark">Dev:</span><span class="info-val">${getOS()}</span></div>
+                            `);
+                            } else { throw new Error(); }
+                        })
+                        .catch(() => {
+                            render(`<span class="info-val">Welcome!</span>`);
+                        });
+                });
+
+            const backBtn = document.getElementById('back-top-btn');
+            if(backBtn) {
+                window.addEventListener('scroll', () => {
+                    const top = window.scrollY || document.documentElement.scrollTop;
+                    top > 200 ? backBtn.classList.add('visible') : backBtn.classList.remove('visible');
+                }, { passive: true });
+            }
+        }
+        if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initCapsule);
+        else initCapsule();
+
+
+        // 3. 安全防护
+        function initSecurity() {
+            document.addEventListener('contextmenu', e => { e.preventDefault(); return false; });
+            document.onkeydown = function(e) {
+                var c = e.ctrlKey || e.metaKey;
+                if (e.keyCode === 123 || (c && (e.keyCode === 83 || e.keyCode === 85 || e.keyCode === 80)) || (c && e.shiftKey && (e.keyCode === 73 || e.keyCode === 74 || e.keyCode === 67))) {
+                    e.preventDefault(); return false;
+                }
+            };
+            setInterval(function() { try { (function() {}.constructor('debugger')()); } catch (e) {} }, 1000);
+        }
+        try { initSecurity(); } catch(e) {}
+
+
+        // 4. 流量监控 (并行流式加载)
+        var CONFIG = { interval: 60000, apiUrl: '/api/rpc2', trafficTolerance: 0.10 };
+        var style = document.createElement('style');
+        style.textContent = '.server-footer-name>div:first-child{visibility:hidden!important}.server-footer-theme{display:none!important}';
+        document.head.appendChild(style);
+
+        var UNITS = ['B', 'KiB', 'MiB', 'GiB', 'TiB', 'PiB'];
+        var UNIT_MAP = { KIB: 1024, MIB: 1048576, GIB: 1073741824, TIB: 1099511627776 };
+        var CYCLE_MAP = { 30: '月', 92: '季', 184: '半年', 365: '年', 730: '二年', 1095: '三年', 1825: '五年' };
+
+        function formatBytes(bytes) {
+            if (!bytes) return { value: '0', unit: 'B' };
+            var i = Math.floor(Math.log(bytes) / Math.log(1024));
+            return { value: (bytes / Math.pow(1024, i)).toFixed(2), unit: UNITS[i] };
+        }
+        function formatTime(s) {
+            if (!s) return 'N/A';
+            try { return new Date(s).toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai', hour: '2-digit', minute: '2-digit', second: '2-digit' }); } catch (e) { return 'N/A'; }
+        }
+        function getCycleText(c) {
+            if (!c || c <= 0) return c === -1 || c === 0 ? '一次性' : '年';
+            for (var days in CYCLE_MAP) { if (Math.abs(c - days) <= 3) return CYCLE_MAP[days]; }
+            var y = Math.round(c / 365);
+            return y >= 1 && y <= 10 ? y + '年' : '年';
+        }
+        function calcResetDays(expiredAt) {
+            if (!expiredAt) return 'N/A';
+            try {
+                var day = new Date(expiredAt).getDate(), now = new Date();
+                var reset = new Date(now.getFullYear(), now.getMonth(), day);
+                if (reset <= now) reset.setMonth(reset.getMonth() + 1);
+                return Math.ceil((reset - now) / 86400000) + '日';
+            } catch (e) { return 'N/A'; }
+        }
+        function parseTraffic(text) {
+            var m = text.match(/([\d.]+)\s*(GiB|MiB|TiB|KiB)/i);
+            return m ? parseFloat(m[1]) * (UNIT_MAP[m[2].toUpperCase()] || 1) : null;
+        }
+        function normName(n) { return n.toUpperCase().replace(/[^A-Z0-9-]/g, ''); }
+        function getColor(p) { return 'hsl(' + ((100 - p) * 1.4) + ',70%,50%)'; }
+
+        function createBar(d) {
+            var uf = formatBytes(d.used), tf = formatBytes(d.limit), pc = Math.min(100, d.used / d.limit * 100).toFixed(2);
+            var div = document.createElement('div');
+            div.className = 'space-y-1.5 traffic-bar';
+            div.dataset.uuid = d.uuid;
+            div.style.width = '100%';
+            div.innerHTML = `<div class="flex items-center justify-between"><div class="flex items-baseline gap-1"><span class="text-[10px] font-medium text-neutral-800 dark:text-neutral-200 used-val">${uf.value}</span><span class="text-[10px] font-medium text-neutral-800 dark:text-neutral-200 used-unit">${uf.unit}</span><span class="text-[10px] text-neutral-500 dark:text-neutral-400">/ ${tf.value} ${tf.unit}</span></div><div class="text-[10px] font-medium text-neutral-600 dark:text-neutral-300 percent-val">${pc}%</div></div><div class="relative h-1.5" style="width:100%"><div class="absolute inset-0 bg-neutral-100 dark:bg-neutral-800 rounded-full"></div><div class="absolute inset-0 rounded-full transition-all duration-300 progress-bar" style="width:${pc}%;background-color:${getColor(parseFloat(pc))}"></div></div><div class="flex items-center justify-between"><div class="text-[10px] text-neutral-500 dark:text-neutral-400 update-time">更新于: ${formatTime(d.next_update)}</div><div class="text-[10px] text-neutral-500 dark:text-neutral-400 reset-date">重置: ${d.reset_date}</div></div>`;
+            return div;
+        }
+
+        function updateBar(el, d) {
+            var uf = formatBytes(d.used), pc = Math.min(100, d.used / d.limit * 100).toFixed(2);
+            el.querySelector('.used-val').textContent = uf.value;
+            el.querySelector('.used-unit').textContent = uf.unit;
+            el.querySelector('.percent-val').textContent = pc + '%';
+            el.querySelector('.update-time').textContent = '更新于: ' + formatTime(d.next_update);
+            el.querySelector('.reset-date').textContent = '重置: ' + d.reset_date;
+            var bar = el.querySelector('.progress-bar');
+            bar.style.width = pc + '%';
+            bar.style.backgroundColor = getColor(parseFloat(pc));
+        }
+
+        function fixPrice(container, d) {
+            if (!d.price || d.billing_cycle == null) return;
+            var text = '价格: ' + (d.currency || '$') + d.price + '/' + getCycleText(d.billing_cycle);
+            var ps = container.getElementsByTagName('p');
+            for (var i = 0; i < ps.length; i++) { if (ps[i].textContent.indexOf('价格:') !== -1) ps[i].textContent = text; }
+        }
+
+        function getCardTraffic(container) {
+            var divs = container.querySelectorAll('.inline-flex');
+            var up = null, down = null;
+            for (var i = 0; i < divs.length; i++) {
+                var t = divs[i].textContent;
+                if (t.indexOf('上传') !== -1) up = parseTraffic(t);
+                else if (t.indexOf('下载') !== -1) down = parseTraffic(t);
+            }
+            return up && down ? { up: up, down: down } : null;
+        }
+
+        function matchCard(candidates, d) {
+            if (candidates.length === 1) return candidates[0];
+            var best = null, bestDiff = Infinity;
+            for (var i = 0; i < candidates.length; i++) {
+                var traffic = getCardTraffic(candidates[i].closest('div'));
+                if (!traffic) continue;
+                var diff = (Math.abs(traffic.up - d.net_total_up) + Math.abs(traffic.down - d.net_total_down)) / 2;
+                if (diff < bestDiff) { best = candidates[i]; bestDiff = diff; }
+            }
+            return best || candidates[0];
+        }
+
+        function rpc(method, params) {
+            return fetch(CONFIG.apiUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({ id: Date.now(), method: method, params: params || {}, jsonrpc: '2.0' })
+            }).then(r => r.json());
+        }
+
+        function calcUsed(up, down, type) {
+            if (type === 'max') return Math.max(up, down);
+            if (type === 'min') return Math.min(up, down);
+            if (type === 'up') return up;
+            if (type === 'down') return down;
+            return up + down;
+        }
+
+        // --- 极速并行加载 ---
+        var renderQueue = [];
+        var dataFetched = false;
+
+        // 1. 独立渲染器
+        function render(list) {
+            var sections = document.querySelectorAll('section.grid.items-center.gap-2');
+            if (sections.length === 0) return;
+
+            var used = new Set();
+            for (var i = 0; i < list.length; i++) {
+                var d = list[i];
+                var norm = normName(d.name);
+                var candidates = [];
+                for (var j = 0; j < sections.length; j++) {
+                    if (used.has(sections[j])) continue;
+                    var p = sections[j].querySelector('p');
+                    if (p && normName(p.textContent.trim()) === norm) candidates.push(sections[j]);
+                }
+                if (!candidates.length) continue;
+                var target = matchCard(candidates, d);
+                used.add(target);
+                var container = target.closest('div');
+                fixPrice(container, d);
+
+                var udSec = null;
+                container.querySelectorAll('section').forEach(s => { if(s.textContent.includes('上传') && s.textContent.includes('下载')) udSec = s; });
+                if (!udSec) continue;
+
+                var existingBar = container.querySelector('.traffic-bar[data-uuid="' + d.uuid + '"]');
+                existingBar ? updateBar(existingBar, d) : udSec.parentNode.insertBefore(createBar(d), udSec.nextSibling);
+            }
+        }
+
+        function startRenderLoop() {
+            setInterval(function() {
+                if (renderQueue.length === 0) return;
+                if (document.querySelector('section.grid[class*="grid-cols-"]')) {
+                    var batch = renderQueue.splice(0, renderQueue.length);
+                    render(batch);
+                }
+            }, 200);
+        }
+
+        // 2. 独立数据抓取
+        function startFetching() {
+            if (dataFetched) return;
+            dataFetched = true;
+
+            rpc('common:getNodes').then(function(res) {
+                var nodes = Object.values(res.result || res.data || {});
+                nodes.forEach(function(n) {
+                    rpc('common:getNodeRecentStatus', { uuid: n.uuid, limit: 1 }).then(function(sr) {
+                        var rec = ((sr.result || sr.data || {}).records || [])[0] || {};
+                        var up = rec.net_total_up || 0, down = rec.net_total_down || 0;
+                        var d = {
+                            name: n.name, uuid: n.uuid, limit: n.traffic_limit || 0,
+                            used: calcUsed(up, down, n.traffic_limit_type || 'sum'),
+                            next_update: rec.time, reset_date: calcResetDays(n.expired_at),
+                            price: n.price, currency: n.currency, billing_cycle: n.billing_cycle,
+                            net_total_up: up, net_total_down: down
+                        };
+                        if (d.limit > 0) {
+                            renderQueue.push(d);
+                        }
+                    }).catch(() => {});
+                });
+            });
+
+            setTimeout(function() { dataFetched = false; startFetching(); }, CONFIG.interval);
+        }
+
+        // 启动引擎
+        startRenderLoop();
+        startFetching();
+
+    })();
+</script>
+
+<script defer src="https://cdn.jsdelivr.net/gh/mocchen/cssmeihua/js/yinghua.js"></script>
+<script defer src="https://cdn.jsdelivr.net/gh/mocchen/cssmeihua/js/aixin.js"></script>
+<script defer src="https://cdn.jsdelivr.net/gh/mocchen/cssmeihua/js/yanhuabowen.js"></script>
+<script defer src="https://cdn.jsdelivr.net/gh/mocchen/cssmeihua/js/xiaoxingxing.js"></script>

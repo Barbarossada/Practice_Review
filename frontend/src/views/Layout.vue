@@ -85,12 +85,55 @@
 
           <n-space align="center" :size="24">
             <!-- Quick Actions -->
-            <n-button circle secondary type="primary" class="action-btn desktop-only">
+            <n-button circle secondary type="primary" class="action-btn desktop-only" @click="openSearch">
               <template #icon><n-icon :component="SearchOutline" /></template>
             </n-button>
-            <n-button circle secondary type="warning" class="action-btn">
-              <template #icon><n-icon :component="NotificationsOutline" /></template>
-            </n-button>
+            
+            <n-popover trigger="click" placement="bottom-end" :show-arrow="false" style="padding: 0; width: 320px;">
+              <template #trigger>
+                <n-button circle secondary type="warning" class="action-btn">
+                  <template #icon>
+                    <n-badge :value="unreadCount" :max="99" :dot="unreadCount > 0" processing>
+                      <n-icon :component="NotificationsOutline" />
+                    </n-badge>
+                  </template>
+                </n-button>
+              </template>
+              
+              <!-- Notification Panel -->
+              <div class="notification-panel">
+                <div class="panel-header">
+                  <span class="panel-title">系统通知 ({{ unreadCount }})</span>
+                  <n-button text size="small" type="primary" @click="markAllRead" :disabled="unreadCount === 0">
+                    全部已读
+                  </n-button>
+                </div>
+                <div class="panel-body">
+                  <n-empty v-if="notifications.length === 0" description="暂无通知" style="padding: 24px 0" />
+                  <div 
+                    v-else 
+                    v-for="item in notifications" 
+                    :key="item.id" 
+                    class="notification-item"
+                    :class="{ 'unread': !item.read }"
+                    @click="readNotification(item)"
+                  >
+                    <div class="notif-icon" :class="item.type">
+                      <n-icon :component="item.icon" />
+                    </div>
+                    <div class="notif-content">
+                      <div class="notif-title">{{ item.title }}</div>
+                      <div class="notif-desc">{{ item.content }}</div>
+                      <div class="notif-time">{{ item.time }}</div>
+                    </div>
+                    <div v-if="!item.read" class="notif-dot"></div>
+                  </div>
+                </div>
+                <div class="panel-footer">
+                  <n-button text block size="small">查看全部历史消息</n-button>
+                </div>
+              </div>
+            </n-popover>
             
             <div class="divider desktop-only"></div>
 
@@ -140,16 +183,41 @@
         </router-view>
       </n-layout-content>
     </n-layout>
+    
+    <!-- 全局搜索模态框 -->
+    <n-modal
+      v-model:show="showSearchModal"
+      preset="card"
+      :style="{ width: '600px', maxWidth: '90vw' }"
+      class="global-search-modal"
+    >
+      <div class="search-container">
+        <n-input
+          v-model:value="searchKeyword"
+          size="large"
+          placeholder="搜索题目、知识点..."
+          clearable
+          @keyup.enter="handleGlobalSearch"
+          class="search-input"
+          ref="searchInputRef"
+        >
+          <template #prefix>
+            <n-icon :component="SearchOutline" class="search-icon-prefix" />
+          </template>
+        </n-input>
+        <div class="search-hint">按 Enter 开始搜索</div>
+      </div>
+    </n-modal>
   </n-layout>
 </template>
 
 <script setup>
-import { ref, h, computed } from 'vue'
+import { ref, h, computed, nextTick } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useMessage } from 'naive-ui'
 import { 
   NLayout, NLayoutSider, NLayoutHeader, NLayoutContent, NDrawer, NDrawerContent,
-  NMenu, NSpace, NText, NTag, NIcon, NAvatar, NDropdown, NButton 
+  NMenu, NSpace, NText, NTag, NIcon, NAvatar, NDropdown, NButton, NPopover, NBadge, NEmpty, NModal, NInput
 } from 'naive-ui'
 import {
   HomeOutline,
@@ -165,7 +233,10 @@ import {
   ChevronDownOutline,
   MenuOutline,
   SearchOutline,
-  NotificationsOutline
+  NotificationsOutline,
+  InformationCircleOutline,
+  AlertCircleOutline,
+  TrophyOutline
 } from '@vicons/ionicons5'
 import { useUserStore } from '@/stores/user'
 
@@ -237,6 +308,81 @@ async function handleUserMenuSelect(key) {
   } else if (key === 'logout') {
     await userStore.logout()
     message.success('已退出登录')
+  }
+}
+
+// === 搜索功能 ===
+const showSearchModal = ref(false)
+const searchKeyword = ref('')
+const searchInputRef = ref(null)
+
+const openSearch = () => {
+  showSearchModal.value = true
+  // 自动聚焦
+  nextTick(() => {
+    // Naive UI Input 聚焦需要等待 DOM 渲染
+    // 这里简单处理，用户手动点击也可以
+  })
+}
+
+const handleGlobalSearch = () => {
+  const keyword = searchKeyword.value.trim()
+  if (!keyword) return
+  
+  showSearchModal.value = false
+  // 跳转到练习页面并带上搜索参数
+  router.push({
+    path: '/practice',
+    query: { keyword }
+  })
+  searchKeyword.value = ''
+}
+
+// === 通知功能 (Mock Data) ===
+const notifications = ref([
+  { 
+    id: 1, 
+    type: 'info',
+    title: '系统通知', 
+    content: '期末复习系统 Pro 版已上线！', 
+    time: '刚刚', 
+    read: false,
+    icon: InformationCircleOutline
+  },
+  { 
+    id: 2, 
+    type: 'warning',
+    title: '错题提醒', 
+    content: '您昨天有 5 道新错题待复习，点击前往错题本。', 
+    time: '2小时前', 
+    read: false,
+    icon: AlertCircleOutline
+  },
+  { 
+    id: 3, 
+    type: 'success',
+    title: '达成成就', 
+    content: '恭喜！您已连续打卡 3 天。', 
+    time: '1天前', 
+    read: true,
+    icon: TrophyOutline
+  }
+])
+
+const unreadCount = computed(() => notifications.value.filter(n => !n.read).length)
+
+const markAllRead = () => {
+  notifications.value.forEach(n => n.read = true)
+  message.success('已全部标记为已读')
+}
+
+const readNotification = (item) => {
+  if (!item.read) {
+    item.read = true
+  }
+  // 简单的跳转逻辑
+  if (item.title === '错题提醒') {
+    router.push('/wrong-book')
   }
 }
 </script>
@@ -543,5 +689,227 @@ async function handleUserMenuSelect(key) {
   transform: translateX(20px);
   opacity: 0;
   filter: grayscale(100%);
+}
+
+/* === Notification Panel Styles (Enhanced Tech Style) === */
+.notification-panel {
+  background: white;
+  border: 4px solid var(--void-black);
+  box-shadow: 8px 8px 0 rgba(0,0,0,0.2);
+  width: 340px; /* Slightly wider */
+}
+
+.panel-header {
+  padding: 12px 16px;
+  border-bottom: 4px solid var(--void-black);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: var(--neon-yellow); /* Yellow Header */
+}
+
+.panel-title {
+  font-weight: 900;
+  font-size: 16px;
+  color: var(--void-black);
+  text-transform: uppercase;
+  font-family: 'Courier New', Courier, monospace;
+  letter-spacing: -0.5px;
+}
+
+.panel-body {
+  max-height: 400px;
+  overflow-y: auto;
+  background: 
+    linear-gradient(90deg, transparent 95%, rgba(0,0,0,0.03) 95%),
+    linear-gradient(transparent 95%, rgba(0,0,0,0.03) 95%);
+  background-size: 20px 20px;
+}
+
+.notification-item {
+  padding: 16px;
+  border-bottom: 2px solid var(--void-black);
+  display: flex;
+  gap: 16px; /* More gap */
+  cursor: pointer;
+  position: relative;
+  transition: all 0.1s;
+  background: white;
+  margin-bottom: -2px; /* Overlap borders */
+}
+
+.notification-item:hover {
+  background: var(--off-white);
+  transform: translateX(-4px);
+  box-shadow: 4px 4px 0 var(--neon-cyan);
+  z-index: 10;
+  border-color: var(--void-black);
+}
+
+.notification-item.unread {
+  background: #fff;
+}
+/* Unread indicator via left border */
+.notification-item.unread::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 6px;
+  background: var(--neon-magenta);
+}
+
+.notif-icon {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid var(--void-black);
+  font-size: 20px;
+  flex-shrink: 0;
+  background: white;
+  box-shadow: 3px 3px 0 rgba(0,0,0,0.2);
+}
+
+.notif-icon.info { color: var(--neon-cyan); }
+.notif-icon.warning { color: var(--neon-yellow); }
+.notif-icon.success { color: var(--neon-magenta); }
+
+/* Invert colors on specific types for variety */
+.notif-icon.success { background: var(--neon-magenta); color: white; }
+
+.notif-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.notif-title {
+  font-weight: 800;
+  font-size: 14px;
+  color: var(--void-black);
+  font-family: 'Courier New', Courier, monospace;
+  margin-bottom: 4px;
+}
+
+.notif-desc {
+  font-size: 12px;
+  color: #555;
+  margin-bottom: 6px;
+  line-height: 1.4;
+  font-family: sans-serif;
+  font-weight: 500;
+}
+
+.notif-time {
+  font-size: 10px;
+  color: var(--void-black);
+  font-family: monospace;
+  background: #eee;
+  padding: 2px 4px;
+  align-self: flex-start;
+  border: 1px solid #ccc;
+}
+
+.notif-dot {
+  display: none; /* Replaced by left strip */
+}
+
+.panel-footer {
+  padding: 12px;
+  border-top: 4px solid var(--void-black);
+  text-align: center;
+  background: var(--void-black);
+}
+
+.panel-footer :deep(.n-button) {
+  color: var(--neon-cyan) !important;
+  font-family: monospace;
+  font-weight: bold;
+}
+.panel-footer :deep(.n-button:hover) {
+  text-decoration: underline;
+  text-decoration-style: wavy;
+}
+
+
+/* === Global Search Modal (Brutalist) === */
+.global-search-modal .n-card {
+  border: 4px solid var(--void-black) !important;
+  border-radius: 0 !important;
+  box-shadow: 12px 12px 0 var(--void-black) !important;
+  background: var(--neon-yellow) !important; /* Bold Background */
+}
+
+.global-search-modal :deep(.n-card-header) {
+  border-bottom: 4px solid var(--void-black) !important;
+  background: white !important;
+  padding: 16px 24px !important;
+}
+
+.global-search-modal :deep(.n-card__content) {
+  background: white !important;
+  padding: 30px !important;
+}
+
+.search-container {
+  text-align: left;
+}
+
+/* Custom Search Input */
+:deep(.search-input .n-input-wrapper) {
+  padding: 0 12px !important;
+  background: white !important;
+}
+
+:deep(.search-input .n-input__border),
+:deep(.search-input .n-input__state-border) {
+  border: 3px solid var(--void-black) !important;
+  border-radius: 0 !important;
+  box-shadow: 4px 4px 0 rgba(0,0,0,0.1) !important;
+  transition: all 0.2s !important;
+}
+
+:deep(.search-input:hover .n-input__state-border) {
+  box-shadow: 6px 6px 0 rgba(0,0,0,0.2) !important;
+  border-color: var(--void-black) !important;
+}
+
+:deep(.search-input.n-input--focus .n-input__state-border) {
+  box-shadow: 6px 6px 0 var(--neon-cyan) !important;
+  border-color: var(--void-black) !important;
+}
+
+:deep(.search-input .n-input__input-el) {
+  font-family: 'Courier New', monospace !important;
+  font-weight: bold !important;
+  font-size: 18px !important;
+  height: 48px !important;
+  color: var(--void-black) !important;
+}
+
+:deep(.search-input .n-input__placeholder) {
+  font-style: italic;
+  font-weight: normal;
+}
+
+.search-icon-prefix {
+  font-size: 24px;
+  color: var(--void-black);
+  margin-right: 8px;
+}
+
+.search-hint {
+  margin-top: 16px;
+  font-family: 'Courier New', monospace;
+  font-size: 12px;
+  font-weight: bold;
+  color: var(--void-black);
+  background: var(--neon-cyan);
+  display: inline-block;
+  padding: 4px 8px;
+  border: 2px solid var(--void-black);
+  box-shadow: 3px 3px 0 rgba(0,0,0,0.1);
+  transform: rotate(-1deg);
 }
 </style>

@@ -45,6 +45,10 @@
           </ul>
         </n-alert>
 
+        <n-form-item label="文件编码格式" style="max-width: 300px; margin-bottom: 24px">
+          <n-select v-model:value="fileEncoding" :options="encodingOptions" />
+        </n-form-item>
+
         <n-upload
           :max="1"
           accept=".txt"
@@ -155,7 +159,7 @@ import { ref, computed } from 'vue'
 import { 
   useMessage, NCard, NSpace, NAlert, NUpload, NButton, NIcon, 
   NTag, NStatistic, NFormItem, NInput, NSteps, NStep, NUploadDragger, NText, NP,
-  NGrid, NGridItem, NResult
+  NGrid, NGridItem, NResult, NSelect
 } from 'naive-ui'
 import { 
   DocumentTextOutline, CheckmarkCircle, DownloadOutline, CloudUploadOutline,
@@ -171,6 +175,11 @@ const converting = ref(false)
 const exportFileName = ref('题库')
 const subjectName = ref('未分类')
 const currentStep = ref(1)
+const fileEncoding = ref('utf-8')
+const encodingOptions = [
+  { label: 'UTF-8', value: 'utf-8' },
+  { label: 'GBK (中文)', value: 'gbk' }
+]
 
 const handleFileSelect = (options) => {
   const file = options.file.file
@@ -181,7 +190,11 @@ const handleFileSelect = (options) => {
     fileContent.value = e.target.result
     parseQuestions()
   }
-  reader.readAsText(file, 'utf-8')
+  reader.onload = (e) => {
+    fileContent.value = e.target.result
+    parseQuestions()
+  }
+  reader.readAsText(file, fileEncoding.value)
   
   return false // 阻止自动上传
 }
@@ -318,8 +331,9 @@ const parseAnswers = (answerText) => {
   if (!answerText || !answerText.trim()) return answers
   
   const allText = answerText.replace(/\n/g, ' ').replace(/\s+/g, ' ').trim()
-  // 支持 A-F 选项
-  const rangePattern = /(\d+)-(\d+)\s+([A-F\s]+?)(?=\d+-\d+|$)/g
+  // 支持 A-F 选项以及判断题常见答案（T/F/对/错/√/×）
+  // 匹配模式：数字-数字 答案序列
+  const rangePattern = /(\d+)-(\d+)\s+([A-F\sTtrueFalse对错√×]+?)(?=\d+-\d+|$)/gi
   let match
   
   while ((match = rangePattern.exec(allText)) !== null) {
@@ -327,11 +341,18 @@ const parseAnswers = (answerText) => {
     const end = parseInt(match[2])
     const answersStr = match[3].trim()
     
-    // 支持 A-F 选项
-    const answerLetters = answersStr.split(/\s+/).filter(a => /^[A-F]+$/.test(a))
+    // 分割答案，过滤掉无效字符
+    // 支持标准选项 A-F，以及判断题答案
+    const answerItems = answersStr.split(/\s+/).filter(a => 
+      /^[A-F]+$/i.test(a) || 
+      /^(T|F|True|False|对|错|√|×|正确的|错误的)$/i.test(a)
+    )
     
-    for (let j = 0; j < answerLetters.length && (start + j) <= end; j++) {
-      answers[start + j] = answerLetters[j]
+    for (let j = 0; j < answerItems.length && (start + j) <= end; j++) {
+      let ans = answerItems[j]
+      // 统一判断题答案格式，如果是判断题答案，不做转换，在 convertToExcel 中处理
+      // 或者在这里统一转换为标准格式也可以，但 convertToExcel 已有处理逻辑
+      answers[start + j] = ans
     }
   }
   

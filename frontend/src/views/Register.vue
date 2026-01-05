@@ -1,114 +1,146 @@
 <template>
-  <div class="register-container">
-    <div class="register-card">
-      <!-- Logo 区域 -->
-      <div class="logo-area">
-        <div class="logo-icon">
-          <n-icon :component="SchoolOutline" size="40" color="#fff" />
-        </div>
-        <h1 class="title">创建账号</h1>
-        <p class="subtitle">加入我们，开始高效复习之旅</p>
-      </div>
-
-      <!-- 注册表单 -->
-      <n-form 
-        ref="formRef" 
-        :model="formData" 
-        :rules="rules"
-        label-placement="left"
-        label-width="0"
-        size="large"
-      >
-        <n-form-item path="username">
-          <n-input 
-            v-model:value="formData.username" 
-            placeholder="请输入用户名（3-50个字符）"
-            :input-props="{ autocomplete: 'username' }"
-          >
-            <template #prefix>
-              <n-icon :component="PersonOutline" />
-            </template>
-          </n-input>
-        </n-form-item>
-
-        <n-form-item path="nickname">
-          <n-input 
-            v-model:value="formData.nickname" 
-            placeholder="请输入昵称（可选）"
-          >
-            <template #prefix>
-              <n-icon :component="HappyOutline" />
-            </template>
-          </n-input>
-        </n-form-item>
-
-        <n-form-item path="email">
-          <n-input 
-            v-model:value="formData.email" 
-            placeholder="请输入邮箱（可选）"
-            :input-props="{ autocomplete: 'email' }"
-          >
-            <template #prefix>
-              <n-icon :component="MailOutline" />
-            </template>
-          </n-input>
-        </n-form-item>
-
-        <n-form-item path="password">
-          <n-input 
-            v-model:value="formData.password" 
-            type="password"
-            placeholder="请输入密码（6-50个字符）"
-            show-password-on="click"
-            :input-props="{ autocomplete: 'new-password' }"
-          >
-            <template #prefix>
-              <n-icon :component="LockClosedOutline" />
-            </template>
-          </n-input>
-        </n-form-item>
-
-        <n-form-item path="confirmPassword">
-          <n-input 
-            v-model:value="formData.confirmPassword" 
-            type="password"
-            placeholder="请再次输入密码"
-            show-password-on="click"
-            :input-props="{ autocomplete: 'new-password' }"
-            @keyup.enter="handleRegister"
-          >
-            <template #prefix>
-              <n-icon :component="LockClosedOutline" />
-            </template>
-          </n-input>
-        </n-form-item>
-
-        <n-form-item>
-          <n-button 
-            type="primary" 
-            block 
-            strong
-            :loading="loading"
-            @click="handleRegister"
-          >
-            注 册
-          </n-button>
-        </n-form-item>
-
-        <n-form-item>
-          <div class="form-footer">
-            <span>已有账号？</span>
-            <n-button text type="primary" @click="goToLogin">立即登录</n-button>
-          </div>
-        </n-form-item>
-      </n-form>
+  <div class="sketch-register-container">
+    <!-- 点阵纸背景 -->
+    <div class="paper-dot-bg"></div>
+    
+    <!-- 装饰元素 -->
+    <div class="decorations">
+      <div class="decor-spring"></div>
+      <div class="sticky-note-sm">Hi!</div>
     </div>
 
-    <!-- 背景装饰 -->
-    <div class="bg-decoration">
-      <div class="circle circle-1"></div>
-      <div class="circle circle-2"></div>
-      <div class="circle circle-3"></div>
+    <div class="register-content">
+      <!-- 笔记本页面风格卡片 -->
+      <div class="notebook-card">
+        <!-- 螺旋装订孔装饰 (纯CSS模拟) -->
+        <div class="spiral-binding">
+           <div class="hole" v-for="n in 8" :key="n"></div>
+        </div>
+
+        <div class="card-body">
+          <!-- 头部 -->
+          <div class="header-section">
+            <h1 class="marker-title">加入我们!</h1>
+            <p class="pencil-text">创建你的专属题库账号</p>
+            <div class="scribble-line">
+              <svg viewBox="0 0 200 10" preserveAspectRatio="none">
+                <path d="M0,5 Q5,0 10,5 T20,5 T30,5 T40,5 T50,5 T60,5 T70,5 T80,5 T90,5 T100,5 T110,5 T120,5 T130,5 T140,5 T150,5 T160,5 T170,5 T180,5 T190,5 T200,5" 
+                      fill="none" stroke="#10b981" stroke-width="2"/>
+              </svg>
+            </div>
+          </div>
+
+          <!-- 注册表单 -->
+          <n-form 
+            ref="formRef" 
+            :model="formData" 
+            :rules="rules"
+            label-placement="left"
+            label-width="0"
+            size="large"
+            class="sketch-form"
+          >
+            <n-form-item path="username">
+              <div class="field-group">
+                <n-input 
+                  v-model:value="formData.username" 
+                  placeholder="用户名 (必填)"
+                  :input-props="{ autocomplete: 'username' }"
+                  class="line-input"
+                >
+                  <template #prefix>
+                    <n-icon :component="PersonOutline" class="field-icon"/>
+                  </template>
+                </n-input>
+              </div>
+            </n-form-item>
+
+            <n-form-item path="nickname">
+              <div class="field-group">
+                <n-input 
+                  v-model:value="formData.nickname" 
+                  placeholder="昵称 (大家怎么称呼你?)"
+                  class="line-input"
+                >
+                  <template #prefix>
+                    <n-icon :component="HappyOutline" class="field-icon"/>
+                  </template>
+                </n-input>
+              </div>
+            </n-form-item>
+
+            <n-form-item path="email">
+              <div class="field-group">
+                <n-input 
+                  v-model:value="formData.email" 
+                  placeholder="邮箱 (用于找回密码)"
+                  :input-props="{ autocomplete: 'email' }"
+                  class="line-input"
+                >
+                  <template #prefix>
+                    <n-icon :component="MailOutline" class="field-icon"/>
+                  </template>
+                </n-input>
+              </div>
+            </n-form-item>
+
+            <div class="password-group">
+              <n-form-item path="password" class="half-width">
+                <div class="field-group">
+                  <n-input 
+                    v-model:value="formData.password" 
+                    type="password"
+                    placeholder="密码"
+                    show-password-on="click"
+                    :input-props="{ autocomplete: 'new-password' }"
+                    class="line-input"
+                  >
+                    <template #prefix>
+                      <n-icon :component="LockClosedOutline" class="field-icon"/>
+                    </template>
+                  </n-input>
+                </div>
+              </n-form-item>
+
+              <n-form-item path="confirmPassword" class="half-width">
+                <div class="field-group">
+                  <n-input 
+                    v-model:value="formData.confirmPassword" 
+                    type="password"
+                    placeholder="确认密码"
+                    show-password-on="click"
+                    :input-props="{ autocomplete: 'new-password' }"
+                    @keyup.enter="handleRegister"
+                    class="line-input"
+                  >
+                    <template #prefix>
+                      <n-icon :component="CheckmarkCircleOutline" class="field-icon"/>
+                    </template>
+                  </n-input>
+                </div>
+              </n-form-item>
+            </div>
+
+            <n-form-item>
+              <button 
+                class="action-btn register-btn"
+                :disabled="loading"
+                @click="handleRegister"
+              >
+                {{ loading ? '创建中...' : '注册账号' }}
+                <div class="btn-shadow"></div>
+              </button>
+            </n-form-item>
+
+            <div class="footer-link">
+              <span class="text-muted">已经有账号了?</span>
+              <button class="text-btn" @click="goToLogin">
+                <span class="underline-hover">立即登录</span>
+              </button>
+            </div>
+          </n-form>
+        </div>
+      </div>
     </div>
   </div>
 </template>
@@ -117,8 +149,8 @@
 import { ref, reactive } from 'vue'
 import { useRouter } from 'vue-router'
 import { useMessage } from 'naive-ui'
-import { NForm, NFormItem, NInput, NButton, NIcon } from 'naive-ui'
-import { SchoolOutline, PersonOutline, LockClosedOutline, MailOutline, HappyOutline } from '@vicons/ionicons5'
+import { NForm, NFormItem, NInput, NIcon } from 'naive-ui'
+import { PersonOutline, LockClosedOutline, MailOutline, HappyOutline, CheckmarkCircleOutline } from '@vicons/ionicons5'
 import { register } from '@/api/auth'
 
 const router = useRouter()
@@ -143,22 +175,22 @@ function validatePasswordSame(rule, value) {
 // 表单验证规则
 const rules = {
   username: [
-    { required: true, message: '请输入用户名', trigger: 'blur' },
-    { min: 3, max: 50, message: '用户名长度为3-50个字符', trigger: 'blur' }
+    { required: true, message: '用户名必填哦', trigger: 'blur' },
+    { min: 3, max: 50, message: '长度3-50个字符', trigger: 'blur' }
   ],
   nickname: [
-    { max: 50, message: '昵称长度不能超过50个字符', trigger: 'blur' }
+    { max: 50, message: '太长啦', trigger: 'blur' }
   ],
   email: [
-    { type: 'email', message: '请输入正确的邮箱格式', trigger: 'blur' }
+    { type: 'email', message: '这个邮箱格式不对', trigger: 'blur' }
   ],
   password: [
-    { required: true, message: '请输入密码', trigger: 'blur' },
-    { min: 6, max: 50, message: '密码长度为6-50个字符', trigger: 'blur' }
+    { required: true, message: '密码不能为空', trigger: 'blur' },
+    { min: 6, max: 50, message: '至少6位', trigger: 'blur' }
   ],
   confirmPassword: [
-    { required: true, message: '请再次输入密码', trigger: 'blur' },
-    { validator: validatePasswordSame, message: '两次输入的密码不一致', trigger: 'blur' }
+    { required: true, message: '请确认密码', trigger: 'blur' },
+    { validator: validatePasswordSame, message: '两次密码不一致', trigger: 'blur' }
   ]
 }
 
@@ -176,7 +208,7 @@ async function handleRegister() {
       email: formData.email || undefined
     })
 
-    message.success('注册成功，请登录')
+    message.success('注册成功！快去登录吧')
     router.push('/login')
   } catch (e) {
     console.error('注册失败', e)
@@ -188,125 +220,288 @@ async function handleRegister() {
   }
 }
 
-// 跳转到登录页
 function goToLogin() {
   router.push('/login')
 }
 </script>
 
 <style scoped>
-.register-container {
+@import url('https://fonts.googleapis.com/css2?family=Gochi+Hand&family=Patrick+Hand&display=swap');
+
+.sketch-register-container {
   min-height: 100vh;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background-color: #f0fdf4; /* 浅绿背景 */
   position: relative;
   overflow: hidden;
+  font-family: 'Patrick Hand', cursive;
 }
 
-.register-card {
-  width: 420px;
-  padding: 40px;
-  background: rgba(255, 255, 255, 0.95);
-  border-radius: 20px;
-  box-shadow: 0 25px 50px rgba(0, 0, 0, 0.15);
-  position: relative;
-  z-index: 10;
-  backdrop-filter: blur(10px);
-}
-
-.logo-area {
-  text-align: center;
-  margin-bottom: 32px;
-}
-
-.logo-icon {
-  width: 72px;
-  height: 72px;
-  margin: 0 auto 12px;
-  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-  border-radius: 18px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: 0 8px 20px rgba(16, 185, 129, 0.3);
-}
-
-.title {
-  font-size: 22px;
-  font-weight: 700;
-  color: #1e293b;
-  margin: 0 0 8px 0;
-}
-
-.subtitle {
-  font-size: 14px;
-  color: #64748b;
-  margin: 0;
-}
-
-.form-footer {
+/* 点阵背景 */
+.paper-dot-bg {
+  position: absolute;
+  top: 0;
+  left: 0;
   width: 100%;
-  text-align: center;
-  color: #64748b;
-  font-size: 14px;
+  height: 100%;
+  background-image: radial-gradient(#cbd5e1 1px, transparent 1px);
+  background-size: 20px 20px;
+  z-index: 0;
 }
 
-/* 背景装饰 */
-.bg-decoration {
+.decorations {
   position: absolute;
   width: 100%;
   height: 100%;
-  top: 0;
-  left: 0;
   pointer-events: none;
+  z-index: 1;
 }
 
-.circle {
+.sticky-note-sm {
   position: absolute;
+  top: 10%;
+  right: 20%;
+  width: 80px;
+  height: 80px;
+  background: #fef3c7;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Gochi Hand', cursive;
+  font-size: 24px;
+  box-shadow: 2px 2px 5px rgba(0,0,0,0.1);
+  transform: rotate(10deg);
+}
+
+.notebook-card {
+  width: 500px;
+  background: #fff;
+  border-radius: 4px; /* Basic round for browser */
+  border-radius: 255px 15px 225px 15px / 15px 225px 15px 255px; /* Sketchy */
+  border: 2px solid #334155;
+  padding: 0; /* Space handled by inner grid */
+  position: relative;
+  z-index: 10;
+  box-shadow: 10px 15px 0px rgba(51, 65, 85, 0.1);
+  display: flex;
+}
+
+/* 螺旋孔效果 */
+.spiral-binding {
+  width: 40px;
+  background: #f1f5f9;
+  border-right: 2px dashed #cbd5e1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-evenly;
+  padding: 20px 0;
+  border-top-left-radius: 10px;
+  border-bottom-left-radius: 10px;
+}
+
+.hole {
+  width: 12px;
+  height: 12px;
+  background: #334155;
   border-radius: 50%;
-  opacity: 0.1;
+  position: relative;
+}
+.hole::after {
+  content: '';
+  position: absolute;
+  top: -8px;
+  left: -10px;
+  width: 20px;
+  height: 10px;
+  border-top: 3px solid #64748b;
+  border-radius: 50%;
+  transform: rotate(-10deg);
 }
 
-.circle-1 {
-  width: 400px;
-  height: 400px;
-  background: #fff;
-  top: -100px;
-  right: -100px;
+.card-body {
+  flex: 1;
+  padding: 30px 40px;
 }
 
-.circle-2 {
-  width: 300px;
-  height: 300px;
-  background: #fff;
-  bottom: -50px;
-  left: -50px;
+.header-section {
+  text-align: center;
+  margin-bottom: 24px;
 }
 
-.circle-3 {
-  width: 200px;
-  height: 200px;
-  background: #fff;
-  top: 50%;
-  left: 10%;
+.marker-title {
+  font-family: 'Gochi Hand', cursive;
+  font-size: 38px;
+  color: #1e293b;
+  margin: 0;
+  transform: rotate(-2deg);
 }
 
-/* 响应式适配 */
-@media (max-width: 480px) {
-  .register-card {
-    width: 90%;
-    padding: 28px 20px;
+.pencil-text {
+  color: #64748b;
+  font-size: 18px;
+  margin: 5px 0 10px;
+}
+
+.scribble-line {
+  height: 10px;
+  width: 100%;
+  overflow: hidden;
+  opacity: 0.6;
+}
+
+/* 表单样式：横线风格 */
+.field-group {
+  margin-bottom: 4px;
+}
+
+:deep(.line-input .n-input-wrapper) {
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid #cbd5e1;
+  padding: 0;
+  border-radius: 0;
+  transition: all 0.3s;
+}
+
+:deep(.line-input:hover .n-input-wrapper) {
+  border-bottom-color: #64748b;
+}
+
+:deep(.line-input.n-input--focus .n-input-wrapper) {
+  border-bottom-color: #10b981; /* Green accent */
+  box-shadow: 0 4px 6px -4px rgba(16, 185, 129, 0.2);
+}
+
+:deep(.n-input__input-el) {
+  font-family: 'Patrick Hand', cursive !important;
+  font-size: 18px !important;
+  color: #334155 !important;
+  height: 42px !important;
+}
+
+.field-icon {
+  color: #94a3b8;
+  margin-right: 8px;
+}
+:deep(.n-input--focus .field-icon) {
+  color: #10b981;
+}
+
+.password-group {
+  display: flex;
+  gap: 16px;
+}
+.half-width {
+  flex: 1;
+}
+
+/* 注册按钮：3D 按压风格 */
+.register-btn {
+  width: 100%;
+  height: 52px;
+  border: 3px solid #1e293b;
+  background: #10b981;
+  color: #fff;
+  border-radius: 12px;
+  font-family: 'Gochi Hand', cursive;
+  font-size: 22px;
+  cursor: pointer;
+  position: relative;
+  transition: transform 0.1s;
+  margin-top: 10px;
+  z-index: 2;
+}
+
+.register-btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  background: #059669;
+}
+
+.register-btn:active {
+  transform: translateY(2px);
+}
+
+/* 纯CSS模拟的按钮立体阴影 */
+.register-btn::after {
+  content: '';
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  width: 100%;
+  height: 100%;
+  border-radius: 12px;
+  background: #1e293b;
+  z-index: -1;
+  transition: transform 0.1s;
+}
+
+.register-btn:active::after {
+  transform: translate(-3px, -3px);
+}
+
+.footer-link {
+  text-align: center;
+  margin-top: 16px;
+}
+
+.text-muted {
+  color: #64748b;
+  margin-right: 8px;
+}
+
+.text-btn {
+  background: none;
+  border: none;
+  font-family: 'Patrick Hand', cursive;
+  font-size: 18px;
+  color: #10b981;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.underline-hover {
+  position: relative;
+}
+.underline-hover::after {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  background: currentColor;
+  transform: scaleX(0);
+  transition: transform 0.3s;
+  border-radius: 2px;
+}
+.text-btn:hover .underline-hover::after {
+  transform: scaleX(1);
+}
+
+/* 响应式 */
+@media (max-width: 580px) {
+  .notebook-card {
+    width: 95%;
+    flex-direction: column;
   }
-  
-  .logo-icon {
-    width: 60px;
-    height: 60px;
+  .spiral-binding {
+    width: 100%;
+    height: 30px;
+    flex-direction: row;
+    border-right: none;
+    border-bottom: 2px dashed #cbd5e1;
+    border-radius: 10px 10px 0 0;
+    padding: 0 10px;
   }
-  
-  .title {
-    font-size: 20px;
+  .hole {
+    transform: rotate(90deg);
+  }
+  .password-group {
+    flex-direction: column;
+    gap: 0;
   }
 }
 </style>

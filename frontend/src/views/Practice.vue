@@ -573,7 +573,13 @@ onMounted(() => {
   
   // 检查是否从错题本页面跳转过来
   const query = router.currentRoute.value.query
-  if (query.wrongBookPractice === 'true') {
+  
+  // 处理全局搜索跳转
+  if (query.keyword) {
+    searchKeyword.value = query.keyword
+    showSearchModal.value = true
+    handleSearch()
+  } else if (query.wrongBookPractice === 'true') {
     isWrongBookMode.value = true
     wrongBookSubject.value = null
     startWrongBookPracticeMode()

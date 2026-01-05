@@ -23,6 +23,7 @@ public interface WrongBookMapper extends BaseMapper<WrongBook> {
      * @param userId 用户ID
      * @return 题目ID列表
      */
-    @Select("SELECT question_id FROM wrong_book WHERE user_id = #{userId} AND mastery_level < 100 ORDER BY create_time DESC")
+    // 查询所有错题ID，不再按熟练度过滤（用户要求错题永久保留直到手动删除）
+    @Select("SELECT question_id FROM wrong_book WHERE user_id = #{userId} ORDER BY create_time DESC")
     List<Long> selectQuestionIdsByUserId(@Param("userId") Long userId);
 }
