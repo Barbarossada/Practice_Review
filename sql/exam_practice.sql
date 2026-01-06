@@ -27,7 +27,6 @@ CREATE TABLE `practice_record`  (
   `question_id` bigint NOT NULL COMMENT '题目ID',
   `user_answer` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL COMMENT '用户答案',
   `is_correct` tinyint(1) NOT NULL COMMENT '是否正确',
-  `cost_time` int NULL DEFAULT NULL COMMENT '答题耗时（秒）',
   `practice_time` datetime NULL DEFAULT CURRENT_TIMESTAMP COMMENT '练习时间',
   PRIMARY KEY (`id`) USING BTREE,
   INDEX `idx_question`(`question_id` ASC) USING BTREE,
