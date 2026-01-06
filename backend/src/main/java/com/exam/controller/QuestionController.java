@@ -338,6 +338,11 @@ public class QuestionController {
         
         long count = questionService.count(wrapper);
         questionService.remove(wrapper);
+
+        // 如果题库已被完全清空，则重置自增主键，从 1 开始
+        if (questionService.count() == 0) {
+            questionService.resetAutoIncrement();
+        }
         
         // 同步清理科目表
         // 1. 重新统计所有科目数量

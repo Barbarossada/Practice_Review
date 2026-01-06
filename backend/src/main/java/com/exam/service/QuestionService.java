@@ -74,4 +74,9 @@ public interface QuestionService extends IService<Question> {
      * @return 是否成功
      */
     boolean batchDeleteQuestions(java.util.List<Long> ids);
+
+    /**
+     * 当题库被清空时重置自增主键
+     */
+    void resetAutoIncrement();
 }

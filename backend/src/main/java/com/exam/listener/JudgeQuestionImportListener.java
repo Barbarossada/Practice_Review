@@ -35,6 +35,8 @@ public class JudgeQuestionImportListener extends AnalysisEventListener<JudgeQues
     private int failCount = 0;
     // 统计每个科目导入的题目数量
     private Map<String, Integer> subjectCountMap = new HashMap<>();
+    // 记录每个 科目+题型 当前已使用的最大 display_order
+    private Map<String, Integer> displayOrderCounter = new HashMap<>();
 
     public JudgeQuestionImportListener(QuestionService questionService, SubjectService subjectService) {
         this(questionService, subjectService, null, null, null);
@@ -70,6 +72,10 @@ public class JudgeQuestionImportListener extends AnalysisEventListener<JudgeQues
                 return;
             }
 
+            // 为该 科目+题型 分配下一个 display_order
+            int nextOrder = getNextDisplayOrder(question.getSubject(), question.getType());
+            question.setDisplayOrder(nextOrder);
+
             questions.add(question);
 
             // 每100条批量保存一次
@@ -99,6 +105,29 @@ public class JudgeQuestionImportListener extends AnalysisEventListener<JudgeQues
         }
 
         log.info("判断题导入完成: 成功={}, 失败={}", successCount, failCount);
+    }
+
+    /**
+     * 获取指定 科目+题型 的下一个显示序号
+     * 规则：先从数据库统计当前数量作为起点，再在内存中递增，确保本次导入的题目顺序连续
+     */
+    private int getNextDisplayOrder(String subject, String type) {
+        if (subject == null) subject = "未分类";
+        if (type == null) type = "judge";
+
+        String key = subject + "||" + type;
+        Integer current = displayOrderCounter.get(key);
+        if (current == null) {
+            // 首次遇到该组合：从数据库中统计已有题目数量
+            QueryWrapper<Question> wrapper = new QueryWrapper<>();
+            wrapper.eq("subject", subject);
+            wrapper.eq("type", type);
+            int count = (int) questionService.count(wrapper);
+            current = count;
+        }
+        current = current + 1;
+        displayOrderCounter.put(key, current);
+        return current;
     }
 
     private void saveBatch() {
@@ -154,7 +183,7 @@ public class JudgeQuestionImportListener extends AnalysisEventListener<JudgeQues
         }
         
         question.setDifficulty(dto.getDifficulty() != null ? dto.getDifficulty() : "medium");
-        question.setDisplayOrder(0); // 默认值，数据库会自动管理排序
+        // display_order 在导入时由 getNextDisplayOrder 统一分配
         question.setIsMarked(false);
         question.setWrongCount(0);
         question.setPracticeCount(0);

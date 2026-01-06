@@ -173,72 +173,96 @@
     </n-modal>
 
     <!-- 新增/编辑对话框 -->
-    <n-modal v-model:show="showAddModal" preset="card" :title="editingQuestion ? '编辑题目' : '新增题目'" style="width: 700px" class="custom-modal">
+    <n-modal v-model:show="showAddModal" preset="card" :title="editingQuestion ? '编辑题目' : '新增题目'" style="width: 750px" class="custom-modal">
       <n-form ref="formRef" :model="formData" :rules="rules" label-placement="left" label-width="80px" size="large">
-        <n-grid :cols="2" :x-gap="24">
-           <n-grid-item>
-              <n-form-item label="科目" path="subject">
-                <n-select 
-                  v-model:value="formData.subject" 
-                  :options="subjectOptions.map(opt => ({ label: opt.value, value: opt.value }))"
-                  placeholder="选择或输入科目"
-                  filterable
-                  tag
-                />
+        
+        <div class="form-section">
+          <div class="section-header">
+            <span class="section-title">基本信息</span>
+            <n-divider style="margin: 0 0 16px 0" />
+          </div>
+          <n-grid :cols="3" :x-gap="20">
+             <n-grid-item>
+                <n-form-item label="科目" path="subject">
+                  <n-select 
+                    v-model:value="formData.subject" 
+                    :options="subjectOptions.filter(opt => opt.value).map(opt => ({ label: opt.value, value: opt.value }))"
+                    placeholder="选择或输入科目"
+                    filterable
+                    tag
+                  />
+                </n-form-item>
+             </n-grid-item>
+             <n-grid-item>
+                <n-form-item label="题型" path="type">
+                  <n-select v-model:value="formData.type" :options="typeOptions" placeholder="选择题型" />
+                </n-form-item>
+             </n-grid-item>
+             <n-grid-item>
+              <n-form-item label="难度" path="difficulty">
+                <n-select v-model:value="formData.difficulty" :options="difficultyOptions" />
               </n-form-item>
-           </n-grid-item>
-           <n-grid-item>
-              <n-form-item label="题型" path="type">
-                <n-select v-model:value="formData.type" :options="typeOptions" placeholder="选择题型" />
+            </n-grid-item>
+          </n-grid>
+        </div>
+
+        <div class="form-section">
+          <div class="section-header">
+            <span class="section-title">题目详情</span>
+            <n-divider style="margin: 0 0 16px 0" />
+          </div>
+          
+          <n-form-item label="题目" path="content" label-placement="top">
+            <n-input
+              v-model:value="formData.content"
+              type="textarea"
+              placeholder="请输入题目内容"
+              :rows="3"
+            />
+          </n-form-item>
+
+          <div v-if="['single-choice', 'multiple-choice', 'choice'].includes(formData.type)" class="options-container">
+            <n-grid :cols="2" :x-gap="24" :y-gap="12">
+              <n-grid-item>
+                <n-form-item label="A" path="optionA" label-width="30px"><n-input v-model:value="formData.optionA" placeholder="选项A" /></n-form-item>
+              </n-grid-item>
+              <n-grid-item>
+                <n-form-item label="B" path="optionB" label-width="30px"><n-input v-model:value="formData.optionB" placeholder="选项B" /></n-form-item>
+              </n-grid-item>
+              <n-grid-item>
+                <n-form-item label="C" path="optionC" label-width="30px"><n-input v-model:value="formData.optionC" placeholder="选项C" /></n-form-item>
+              </n-grid-item>
+              <n-grid-item>
+                <n-form-item label="D" path="optionD" label-width="30px"><n-input v-model:value="formData.optionD" placeholder="选项D" /></n-form-item>
+              </n-grid-item>
+            </n-grid>
+          </div>
+        </div>
+
+        <div class="form-section" style="margin-top: 12px;">
+           <div class="section-header">
+            <span class="section-title">答案与解析</span>
+             <n-divider style="margin: 0 0 16px 0" />
+          </div>
+          <n-grid :cols="2" :x-gap="24">
+            <n-grid-item>
+               <n-form-item label="答案" path="answer">
+                  <n-select v-if="formData.type === 'judge'" v-model:value="formData.answer" :options="[{label:'正确', value:'正确'}, {label:'错误', value:'错误'}]" placeholder="请选择" />
+                  <n-select v-else-if="['single-choice', 'choice'].includes(formData.type)" v-model:value="formData.answer" :options="['A','B','C','D'].map(v=>({label: v, value: v}))" placeholder="请选择" />
+                  <n-input v-else v-model:value="formData.answer" placeholder="A/B/C/D 或 '正确'/'错误'" />
               </n-form-item>
-           </n-grid-item>
-        </n-grid>
+            </n-grid-item>
+          </n-grid>
 
-        <n-form-item label="题目" path="content">
-          <n-input
-            v-model:value="formData.content"
-            type="textarea"
-            placeholder="请输入题目内容"
-            :rows="3"
-          />
-        </n-form-item>
-
-        <n-grid :cols="2" :x-gap="24" v-if="['single-choice', 'multiple-choice', 'choice'].includes(formData.type)">
-          <n-grid-item>
-            <n-form-item label="选项A" path="optionA"><n-input v-model:value="formData.optionA" placeholder="选项A" /></n-form-item>
-          </n-grid-item>
-          <n-grid-item>
-            <n-form-item label="选项B" path="optionB"><n-input v-model:value="formData.optionB" placeholder="选项B" /></n-form-item>
-          </n-grid-item>
-          <n-grid-item>
-            <n-form-item label="选项C" path="optionC"><n-input v-model:value="formData.optionC" placeholder="选项C" /></n-form-item>
-          </n-grid-item>
-          <n-grid-item>
-            <n-form-item label="选项D" path="optionD"><n-input v-model:value="formData.optionD" placeholder="选项D" /></n-form-item>
-          </n-grid-item>
-        </n-grid>
-
-        <n-grid :cols="2" :x-gap="24">
-          <n-grid-item>
-             <n-form-item label="答案" path="answer">
-              <n-input v-model:value="formData.answer" placeholder="A/B/C/D 或 '正确'/'错误'" />
-            </n-form-item>
-          </n-grid-item>
-          <n-grid-item>
-            <n-form-item label="难度" path="difficulty">
-              <n-select v-model:value="formData.difficulty" :options="difficultyOptions" />
-            </n-form-item>
-          </n-grid-item>
-        </n-grid>
-
-        <n-form-item label="解析" path="analysis">
-          <n-input
-            v-model:value="formData.analysis"
-            type="textarea"
-            placeholder="输入答案解析..."
-            :rows="2"
-          />
-        </n-form-item>
+          <n-form-item label="解析" path="analysis">
+            <n-input
+              v-model:value="formData.analysis"
+              type="textarea"
+              placeholder="输入答案解析..."
+              :rows="2"
+            />
+          </n-form-item>
+        </div>
       </n-form>
 
       <template #footer>
@@ -291,7 +315,7 @@ import { ref, h, onMounted, reactive, computed } from 'vue'
 import {
   NSpace, NCard, NButton, NIcon, NUpload, NSelect, NInput, NDataTable,
   NModal, NForm, NFormItem, NTag, NPopconfirm, NRadioGroup, NRadio, NAlert, NText, useMessage,
-  NButtonGroup, NGrid, NGridItem, NUploadDragger
+  NButtonGroup, NGrid, NGridItem, NUploadDragger, NDivider
 } from 'naive-ui'
 import {
   AddOutline, CloudUploadOutline, CloudDownloadOutline, SearchOutline,
@@ -426,23 +450,25 @@ const rules = {
 }
 
 // 选项
-const subjectOptions = ref([
-  { label: '未分类', value: '未分类' }
-])
+const subjectOptions = ref([])
 
 // 加载科目列表
 const loadSubjects = async () => {
   try {
     const res = await getAllSubjects()
-    if (res.data && res.data.length > 0) {
-      subjectOptions.value = res.data.map(subject => ({
+    if (res.data) {
+      const options = res.data.map(subject => ({
         label: `${subject.name} (${subject.questionCount})`,
         value: subject.name
       }))
-      // 确保"未分类"选项存在
-      if (!subjectOptions.value.some(opt => opt.value === '未分类')) {
-        subjectOptions.value.push({ label: '未分类', value: '未分类' })
-      }
+      
+      // 添加"全部科目"选项
+      subjectOptions.value = [
+        { label: '全部科目', value: null },
+        ...options
+      ]
+      
+      // 如果后端有未分类的数据，但没在列表中，这里可以保留逻辑，但目前先只展示全部+实际科目
     }
   } catch (error) {
     console.error('加载科目列表失败', error)
@@ -488,7 +514,13 @@ const difficultyOptions = [
 const columns = [
   { type: 'selection' },
   { title: 'ID', key: 'id', width: 70, align: 'center' },
-  { title: '序号', key: 'displayOrder', width: 70, align: 'center' },
+  {
+    title: '序号',
+    key: 'index',
+    width: 70,
+    align: 'center',
+    render: (_row, index) => (currentPage.value - 1) * currentPageSize.value + index + 1
+  },
   {
     title: '题型',
     key: 'type',
@@ -524,11 +556,38 @@ const columns = [
   {
     title: '导入时间',
     key: 'createTime',
-    width: 160,
+    width: 150,
     align: 'center',
     render: (row) => {
         if (!row.createTime) return '-'
-        return row.createTime.replace('T', ' ').substring(0, 19)
+        const dateStr = row.createTime.replace('T', ' ')
+        // 使用更优雅的展示方式
+        return h('div', { 
+          style: { 
+            display: 'flex', 
+            flexDirection: 'column', 
+            alignItems: 'center',
+            gap: '2px'
+          } 
+        }, [
+          h(NTag, { 
+            bordered: false, 
+            type: 'primary', 
+            size: 'small', 
+            style: { 
+              fontSize: '12px', 
+              fontWeight: '500',
+              opacity: 0.9
+            } 
+          }, { default: () => dateStr.substring(0, 10) }), // 日期
+          h('span', { 
+            style: { 
+              fontSize: '12px', 
+              color: '#9ca3af',
+              fontFamily: 'Monaco, monospace'
+            } 
+          }, dateStr.substring(11, 16)) // 时间 HH:mm
+        ])
     }
   },
   { 
@@ -963,5 +1022,31 @@ onMounted(() => {
 
 .import-alert {
   text-align: left;
+}
+
+.section-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.section-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--color-primary); 
+  /* Use theme color */
+  white-space: nowrap;
+}
+
+.form-section {
+  margin-bottom: 8px;
+}
+
+.options-container {
+  background: rgba(249, 250, 251, 0.6);
+  padding: 16px;
+  border-radius: 8px;
+  border: 1px dashed rgba(0,0,0,0.1);
+  margin-bottom: 16px;
 }
 </style>

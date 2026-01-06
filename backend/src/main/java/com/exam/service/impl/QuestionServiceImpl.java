@@ -259,4 +259,11 @@ public class QuestionServiceImpl extends ServiceImpl<QuestionMapper, Question> i
         }
         return success;
     }
+
+    @Override
+    public void resetAutoIncrement() {
+        // 将 question 表的自增主键重置为 1
+        // 注意：如果表中仍有数据，MySQL 会自动选择大于现有最大 ID 的值，不会产生主键冲突
+        jdbcTemplate.execute("ALTER TABLE question AUTO_INCREMENT = 1");
+    }
 }
