@@ -99,6 +99,28 @@ export function resetRound(subject) {
   })
 }
 
+/**
+ * 跳转到指定索引的题目
+ */
+export function jumpRoundQuestion(subject, index) {
+  return request({
+    url: '/practice/round/jump',
+    method: 'get',
+    params: { subject, index }
+  })
+}
+
+/**
+ * 获取当前轮次所有题目的答题状态
+ */
+export function getRoundResults(subject) {
+  return request({
+    url: '/practice/round/results',
+    method: 'get',
+    params: { subject }
+  })
+}
+
 // ==================== 搜索 API ====================
 
 /**

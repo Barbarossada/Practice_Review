@@ -67,4 +67,13 @@ public interface PracticeRoundService extends IService<PracticeRound> {
      * @return 新轮次的第一题
      */
     Question resetRound(Long userId, String subject);
+
+    /**
+     * 获取指定轮次的答题状态结果
+     *
+     * @param userId 用户ID
+     * @param subject 科目
+     * @return 索引到状态的映射
+     */
+    java.util.Map<Integer, Integer> getRoundResults(Long userId, String subject);
 }

@@ -469,6 +469,9 @@ onMounted(() => {
 
 .chart-box {
   min-height: 350px;
+  position: relative;
+  overflow: hidden;
+  min-width: 0; /* Fix for Grid item overflow */
 }
 
 .box-header {
@@ -489,6 +492,7 @@ onMounted(() => {
 .chart {
   width: 100%;
   height: 300px;
+  position: relative;
 }
 
 /* Dashboard Content Grid */

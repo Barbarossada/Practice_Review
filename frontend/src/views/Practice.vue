@@ -1,79 +1,136 @@
 <template>
-  <div class="practice-container">
-    <!-- Background Doodles Layer -->
-    <div class="doodles-layer">
-      <div 
-        v-for="(doodle, index) in doodles" 
-        :key="index"
-        class="doodle-item"
-        :style="doodle.style"
-      >
-        <svg 
-          viewBox="0 0 100 100" 
-          fill="none" 
-          stroke="currentColor" 
-          stroke-width="2" 
-          stroke-linecap="round" 
-          stroke-linejoin="round"
-          :style="{ opacity: doodle.opacity }"
+  <div class="practice-container" ref="practiceContainerRef">
+    <n-scrollbar class="global-scrollbar" content-class="practice-layout-container" trigger="none">
+    
+      <!-- Background Doodles Layer -->
+      <div class="doodles-layer">
+        <div 
+          v-for="(doodle, index) in doodles" 
+          :key="index"
+          class="doodle-item"
+          :style="doodle.style"
         >
-          <path :d="doodle.path" />
-        </svg>
-      </div>
-    </div>
-
-    <!-- Main Content Wrapper -->
-    <div class="content-wrapper">
-      <transition name="fade" mode="out-in">
-        <div v-if="!currentQuestion" class="filter-panel">
-          <n-card :bordered="false" size="huge" class="config-card glass">
-            <div class="config-header">
-              <h2 class="config-title">开始专注练习</h2>
-              <p class="config-subtitle">选择科目与题型，进入沉浸式刷题模式</p>
-            </div>
-            
-            <n-form :label-width="80" size="large" class="config-form">
-              <n-grid :cols="1" :y-gap="24">
-                <n-grid-item>
-                  <div class="form-label">选择科目</div>
-                  <n-select 
-                    v-model:value="filters.subject" 
-                    :options="subjectOptions" 
-                    placeholder="全部科目" 
-                    class="premium-select"
-                  />
-                </n-grid-item>
-                <n-grid-item>
-                  <div class="form-label">题目类型</div>
-                  <n-select 
-                    v-model:value="filters.type" 
-                    :options="typeOptions" 
-                    placeholder="混合题型" 
-                    class="premium-select"
-                  />
-                </n-grid-item>
-                <n-grid-item>
-                  <n-button type="primary" block size="large" @click="startPractice" class="start-btn">
-                    <template #icon>
-                      <n-icon :component="SchoolOutline" />
-                    </template>
-                    进入模式
-                  </n-button>
-                </n-grid-item>
-              </n-grid>
-            </n-form>
-          </n-card>
+          <svg 
+            viewBox="0 0 100 100" 
+            fill="none" 
+            stroke="currentColor" 
+            stroke-width="2" 
+            stroke-linecap="round" 
+            stroke-linejoin="round"
+            :style="{ opacity: doodle.opacity }"
+          >
+            <path :d="doodle.path" />
+          </svg>
         </div>
-  
-        <div v-else class="question-wrapper">
+      </div>
+
+      <!-- Main Content -->
+      <div v-if="!currentQuestion" class="filter-panel">
+        <n-card :bordered="false" size="huge" class="config-card glass">
+          <div class="config-header">
+            <h2 class="config-title">开始专注练习</h2>
+            <p class="config-subtitle">选择科目与题型，进入沉浸式刷题模式</p>
+          </div>
+          
+          <n-form :label-width="80" size="large" class="config-form">
+            <n-grid :cols="1" :y-gap="24">
+              <n-grid-item>
+                <div class="form-label">选择科目</div>
+                <n-select 
+                  v-model:value="filters.subject" 
+                  :options="subjectOptions" 
+                  placeholder="全部科目" 
+                  class="premium-select"
+                />
+              </n-grid-item>
+              <n-grid-item>
+                <div class="form-label">题目类型</div>
+                <n-select 
+                  v-model:value="filters.type" 
+                  :options="typeOptions" 
+                  placeholder="混合题型" 
+                  class="premium-select"
+                />
+              </n-grid-item>
+              <n-grid-item>
+                <n-button type="primary" block size="large" @click="startPractice" class="start-btn">
+                  <template #icon>
+                    <n-icon :component="SchoolOutline" />
+                  </template>
+                  进入模式
+                </n-button>
+              </n-grid-item>
+            </n-grid>
+          </n-form>
+        </n-card>
+      </div>
+
+      <div v-else style="display: contents">
+        <!-- Left Sidebar: Stats -->
+        <div class="side-panel left-panel paper-effect">
+            <div class="side-header">
+              <n-icon :component="SchoolOutline" />
+              <span>当前状态</span>
+            </div>
+            <div class="side-content">
+                <div class="subject-card">
+                  <div class="subject-label">科目</div>
+                  <div class="subject-title">{{ currentSubject || '随机练习' }}</div>
+                </div>
+                
+                <div class="stat-grid">
+                  <div class="stat-item">
+                      <span class="stat-val">{{ roundNumber }}</span>
+                      <span class="stat-label">轮次</span>
+                  </div>
+                  <div class="stat-item">
+                      <span class="stat-val">{{ practiceHistory.length }}</span>
+                      <span class="stat-label">已做</span>
+                  </div>
+                </div>
+            </div>
+            <div class="side-footer">
+              <div class="mode-tag">{{ isWrongBookMode ? '错题模式' : '普通模式' }}</div>
+              
+              <div class="reset-wrapper" v-if="currentSubject" @click="handleResetRound">
+                <n-icon :component="RefreshOutline" class="reset-icon" />
+                <span>重置本轮</span>
+              </div>
+            </div>
+            <!-- 卡片 2: 禅意专注 (New Creative Card) -->
+            <n-card :bordered="false" class="side-card zen-card glass" :class="{ 'distracted-shake': isDistracted }">
+              <div class="zen-header">
+                <div class="zen-title" :class="{ 'text-danger': isDistracted }">
+                  {{ isDistracted ? '哎呀！' : '禅意专注' }}
+                </div>
+                <div class="zen-status" :class="{ 'status-danger': isDistracted }">
+                  {{ isDistracted ? '走神啦 😮' : '专注中...' }}
+                </div>
+              </div>
+              <div class="zen-content">
+                <div class="zen-timer" :class="{ 'blur-text': isDistracted }">
+                  {{ isDistracted ? '快回来~' : formatZenTime(zenTime) }}
+                </div>
+                <div class="zen-breath-wrapper">
+                  <div class="zen-breath-circle" :class="{ 'circle-danger': isDistracted }"></div>
+                </div>
+                <div class="zen-quote">
+                  “ {{ isDistracted ? '专注当下，切勿分心~' : zenQuote }} ”
+                </div>
+              </div>
+            </n-card>
+          </div>
+
+          <!-- Center: Question -->
+        <div class="question-wrapper">
           <!-- 顶部工具栏 -->
           <div class="practice-toolbar">
             <div class="toolbar-left">
               <div class="progress-chip">
                 <span class="chip-icon">📝</span>
-                <span class="chip-text">第 {{ historyIndex + 1 }} 题</span>
+                <span class="chip-text">第 {{ displayCurrentNumber }} 题</span>
                 <span class="chip-divider">|</span>
-                <span class="chip-total">共 {{ practiceHistory.length }} 题</span>
+                <span class="chip-total">共 {{ displayTotalCount }} 题</span>
               </div>
             </div>
             <div class="toolbar-right">
@@ -85,7 +142,7 @@
               </n-button>
             </div>
           </div>
-  
+
           <div class="question-panel paper-effect">
             <div class="question-header">
               <div class="header-left">
@@ -94,14 +151,13 @@
                 </n-tag>
                 <span class="subject-text">{{ currentQuestion.subject }}</span>
               </div>
-              <!-- Decorative dots -->
               <div class="paper-holes"></div>
             </div>
-  
+
             <div class="question-content">
               {{ currentQuestion.content }}
             </div>
-  
+
             <div class="options-list">
               <!-- 单选题 -->
               <template v-if="(currentQuestion.type === 'single-choice' || currentQuestion.type === 'choice') && options.length > 0">
@@ -122,12 +178,12 @@
                   <div v-if="practiceStore.showAnalysis && option.key === currentQuestion.answer" class="result-icon">
                     <n-icon :component="CheckmarkCircle" color="#10b981" size="24"/>
                   </div>
-                   <div v-if="practiceStore.showAnalysis && userAnswer === option.key && userAnswer !== currentQuestion.answer" class="result-icon">
+                  <div v-if="practiceStore.showAnalysis && userAnswer === option.key && userAnswer !== currentQuestion.answer" class="result-icon">
                     <n-icon :component="CloseCircle" color="#ef4444" size="24"/>
                   </div>
                 </div>
               </template>
-  
+
               <!-- 多选题 -->
               <template v-if="currentQuestion.type === 'multiple-choice' && options.length > 0">
                 <div 
@@ -151,7 +207,7 @@
                   </div>
                 </div>
               </template>
-  
+
               <!-- 判断题 -->
               <template v-if="currentQuestion.type === 'judge'">
                 <div 
@@ -170,15 +226,14 @@
                   <div v-if="practiceStore.showAnalysis && val === displayAnswer" class="result-icon">
                     <n-icon :component="CheckmarkCircle" color="#10b981" size="24"/>
                   </div>
-                   <div v-if="practiceStore.showAnalysis && userAnswer === val && !isCorrect" class="result-icon">
+                  <div v-if="practiceStore.showAnalysis && userAnswer === val && !isCorrect" class="result-icon">
                     <n-icon :component="CloseCircle" color="#ef4444" size="24"/>
                   </div>
                 </div>
               </template>
             </div>
-  
+
             <div class="action-bar">
-              <!-- 上一题按钮（基于做题历史） -->
               <n-button 
                 quaternary 
                 round 
@@ -190,9 +245,7 @@
                 <n-icon :component="ArrowBackOutline" size="20" />
                 上一题
               </n-button>
-  
-              <!-- 中间按钮区域 -->
-              <!-- 情况1：正常做题（在历史末尾）- 显示提交答案 -->
+
               <n-button 
                 v-if="!isReviewingHistory && !practiceStore.showAnalysis" 
                 type="primary" 
@@ -205,7 +258,6 @@
                 提交答案
               </n-button>
               
-              <!-- 情况2：已提交答案（不在回顾模式）- 显示下一题 -->
               <n-button 
                 v-if="!isReviewingHistory && practiceStore.showAnalysis" 
                 type="primary" 
@@ -217,7 +269,6 @@
                 下一题 (Enter)
               </n-button>
               
-              <!-- 情况3：回顾历史模式 - 显示下一题按钮（前进到下一条历史） -->
               <n-button 
                 v-if="isReviewingHistory"
                 type="primary" 
@@ -230,33 +281,80 @@
                 下一题 →
               </n-button>
             </div>
-  
+
             <transition name="slide-up">
               <div v-if="practiceStore.showAnalysis" class="analysis-box">
-                 <div class="analysis-header">
+                <div class="analysis-header">
                     <div class="analysis-title">
-                       <n-icon :component="BookOutline" class="analysis-icon"/>
-                       <span>知识点讲解</span>
+                      <n-icon :component="BookOutline" class="analysis-icon"/>
+                      <span>知识点讲解</span>
                     </div>
                     <n-tag :type="isCorrect ? 'success' : 'error'" size="small" round>
                       {{ isCorrect ? '🎉 回答正确' : '🤔 回答错误' }}
                     </n-tag>
-                 </div>
-                 <div class="analysis-content">
-                   <div class="correct-answer-row">
-                     <span class="label">正确答案：</span>
-                     <span class="value">{{ displayAnswer }}</span>
-                   </div>
-                   <div class="analysis-text">
-                     {{ currentQuestion.analysis || '暂无详细解析，请参考正确答案进行复习。' }}
-                   </div>
-                 </div>
+                </div>
+                <div class="analysis-content">
+                  <div class="correct-answer-row">
+                    <span class="label">正确答案：</span>
+                    <span class="value">{{ displayAnswer }}</span>
+                  </div>
+                  <div class="analysis-text">
+                    {{ currentQuestion.analysis || '暂无详细解析，请参考正确答案进行复习。' }}
+                  </div>
+                </div>
               </div>
             </transition>
           </div>
         </div>
-      </transition>
-    </div>
+
+          <!-- Right Sidebar -->
+          <div class="side-panel right-panel">
+            <n-card :bordered="false" class="side-card sheet-card glass">
+              <div class="stat-header">
+                <n-icon :component="BookOutline" />
+                <span>答题卡</span>
+              </div>
+              
+              <div v-if="displayTotalCount > 0" class="sheet-container">
+                  <div class="sheet-info">
+                    进度：{{ currentIndex + 1 }}/{{ displayTotalCount }}
+                  </div>
+                  
+                  <div class="bubble-grid">
+                      <div 
+                        v-for="num in currentSheetBubbles" 
+                        :key="num"
+                        class="bubble"
+                        :class="{ 
+                          'active': num === (currentIndex + 1),
+                          'correct': roundResults[num - 1] === 1,
+                          'wrong': roundResults[num - 1] === 2,
+                          'done': roundResults[num - 1] !== 0 && roundResults[num - 1] !== undefined
+                        }"
+                        @click="jumpToRoundIdx(num)"
+                      >
+                        {{ num }}
+                      </div>
+                  </div>
+
+                  <!-- 答题卡分页 -->
+                  <div v-if="totalSheetPages > 1" class="sheet-pagination">
+                    <n-button quaternary circle size="small" :disabled="sheetPage <= 1" @click="sheetPage--">
+                      <template #icon><n-icon :component="ArrowBackOutline" /></template>
+                    </n-button>
+                    <span class="page-num">{{ sheetPage }} / {{ totalSheetPages }}</span>
+                    <n-button quaternary circle size="small" :disabled="sheetPage >= totalSheetPages" @click="sheetPage++">
+                      <template #icon><n-icon :component="ArrowForwardOutline" /></template>
+                    </n-button>
+                  </div>
+              </div>
+              <div v-else class="empty-sheet">
+                  随机模式无固定题量
+              </div>
+            </n-card>
+          </div>
+      </div>
+    </n-scrollbar>
     
     <!-- 搜索模态框 -->
     <n-modal v-model:show="showSearchModal" preset="card" title="🔍 搜索题目" style="width: 500px; max-width: 90vw;">
@@ -289,10 +387,10 @@
 <script setup>
 import { ref, computed, reactive, onMounted, onUnmounted, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
-import { useMessage, useDialog, NCard, NForm, NFormItem, NGrid, NGridItem, NSelect, NButton, NTag, NText, NIcon, NModal, NInput, NProgress } from 'naive-ui'
-import { CloseOutline, CheckmarkCircle, CloseCircle, CheckmarkOutline, SearchOutline, ArrowBackOutline, SchoolOutline, BookOutline } from '@vicons/ionicons5'
+import { useMessage, useDialog, NCard, NForm, NFormItem, NGrid, NGridItem, NSelect, NButton, NTag, NText, NIcon, NModal, NInput, NProgress, NScrollbar } from 'naive-ui'
+import { CloseOutline, CheckmarkCircle, CloseCircle, CheckmarkOutline, SearchOutline, ArrowBackOutline, SchoolOutline, BookOutline, RefreshOutline } from '@vicons/ionicons5'
 import { getRandomQuestion } from '@/api/question'
-import { submitAnswer as submitAnswerApi, startRound, nextRoundQuestion, prevRoundQuestion, resetRound, searchQuestions, startWrongBookPractice, nextWrongQuestion } from '@/api/practice'
+import { submitAnswer as submitAnswerApi, startRound, nextRoundQuestion, prevRoundQuestion, resetRound, searchQuestions, startWrongBookPractice, nextWrongQuestion, jumpRoundQuestion, getRoundResults } from '@/api/practice'
 import { getAllSubjects } from '@/api/subject'
 import { usePracticeStore } from '@/stores/practice'
 
@@ -335,6 +433,135 @@ const roundProgress = computed(() => {
   if (practiceHistory.value.length === 0) return 0
   // 每 20 题一个轮回
   return Math.round(((practiceHistory.value.length % 20) / 20) * 100)
+})
+
+// 展示用题号与总数：优先使用后端返回的总量，随机模式退化为历史长度
+const displayCurrentNumber = computed(() => {
+  if (isWrongBookMode.value || currentSubject.value) {
+    return (currentIndex.value || 0) + 1
+  }
+  if (practiceHistory.value.length === 0) return 0
+  return historyIndex.value + 1
+})
+
+const displayTotalCount = computed(() => {
+  if (isWrongBookMode.value || currentSubject.value) {
+    return totalCount.value || 0
+  }
+  return practiceHistory.value.length
+})
+
+// === 答题卡分页与状态 ===
+const roundResults = ref({}) // { index: status (0-未做, 1-正确, 2-错误) }
+const sheetPage = ref(1)
+const sheetPageSize = 80
+const totalSheetPages = computed(() => Math.ceil(displayTotalCount.value / sheetPageSize))
+const currentSheetBubbles = computed(() => {
+  const start = (sheetPage.value - 1) * sheetPageSize
+  const end = Math.min(start + sheetPageSize, displayTotalCount.value)
+  const bubbles = []
+  for (let i = start + 1; i <= end; i++) {
+    bubbles.push(i)
+  }
+  return bubbles
+})
+
+// 获取题目状态
+const fetchRoundResults = async () => {
+  if (!currentSubject.value) return
+  try {
+    const res = await getRoundResults(currentSubject.value)
+    if (res.data) {
+      roundResults.value = res.data
+    }
+  } catch (err) {
+    console.error('获取答题卡状态失败', err)
+  }
+}
+
+// 跳转到指定题目
+const jumpToRoundIdx = async (number) => {
+  const index = number - 1
+  if (index === currentIndex.value && currentQuestion.value) return
+  
+  try {
+    practiceStore.reset()
+    const res = await jumpRoundQuestion(currentSubject.value, index)
+    if (res.data && res.data.question) {
+      currentQuestion.value = res.data.question
+      currentIndex.value = res.data.currentIndex
+      practiceStore.setCurrentQuestion(res.data.question)
+      userAnswer.value = null
+      selectedAnswers.value = []
+      
+      // 更新历史（如果需要，或者这里可以简单重置历史索引）
+      // 为简化，目前优先满足跳转
+      message.info(`已跳转至第 ${number} 题`)
+    }
+  } catch (err) {
+    message.error('跳转题目失败')
+  }
+}
+
+// === 禅意专注卡片逻辑 ===
+const zenTime = ref(0)
+const zenTimer = ref(null)
+const zenQuote = ref('')
+// 新增：防走神状态
+const isDistracted = ref(false)
+const zenQuotes = [
+  "心如止水，专注当下。",
+  "每一点进步，都值得庆祝。",
+  "呼吸，感受思维的流动。",
+  "不要急，答案就在心中。",
+  "慢慢来，比较快。"
+]
+
+const startZenTimer = () => {
+  if (zenTimer.value) return
+  zenQuote.value = zenQuotes[Math.floor(Math.random() * zenQuotes.length)]
+  zenTimer.value = setInterval(() => {
+    zenTime.value++
+  }, 1000)
+}
+
+const formatZenTime = (seconds) => {
+  const m = Math.floor(seconds / 60)
+  const s = seconds % 60
+  return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`
+}
+
+// 监听鼠标移出/移入
+// 新增：容器 Ref
+const practiceContainerRef = ref(null)
+
+const handleMouseLeave = () => { isDistracted.value = true }
+const handleMouseEnter = () => { isDistracted.value = false }
+
+onMounted(async () => {
+  // 挂载防走神监听 - 仅针对练习区域容器
+  if (practiceContainerRef.value) {
+    practiceContainerRef.value.addEventListener('mouseleave', handleMouseLeave)
+    practiceContainerRef.value.addEventListener('mouseenter', handleMouseEnter)
+  }
+  
+  // 窗口失焦点也算走神 (可选，保留以增强体验)
+  window.addEventListener('blur', handleMouseLeave)
+  window.addEventListener('focus', handleMouseEnter)
+
+  await loadLastFilter()
+  startZenTimer()
+})
+
+onUnmounted(() => {
+  if (zenTimer.value) clearInterval(zenTimer.value)
+  // 移除监听
+  if (practiceContainerRef.value) {
+    practiceContainerRef.value.removeEventListener('mouseleave', handleMouseLeave)
+    practiceContainerRef.value.removeEventListener('mouseenter', handleMouseEnter)
+  }
+  window.removeEventListener('blur', handleMouseLeave)
+  window.removeEventListener('focus', handleMouseEnter)
 })
 const filters = reactive({ subject: null, type: null, difficulty: null })
 
@@ -569,6 +796,7 @@ const handleKeyup = (e) => {
 onMounted(() => {
   loadSubjects()
   generateDoodles()
+  startZenTimer()
   window.addEventListener('keyup', handleKeyup)
   
   // 检查是否从错题本页面跳转过来
@@ -710,35 +938,72 @@ const startPractice = async () => {
       return
     }
     
-    // 更新轮次状态
-    currentQuestion.value = res.data.question
-    currentIndex.value = res.data.currentIndex
-    totalCount.value = res.data.totalCount
-    roundNumber.value = res.data.roundNumber
-    isRoundFinished.value = res.data.isFinished
-    
-    practiceStore.setCurrentQuestion(res.data.question)
-    userAnswer.value = null
-    selectedAnswers.value = []
-    
-    // 添加到做题历史
-    addToHistory(res.data.question)
-    
-    console.log(`轮次进度: ${currentIndex.value + 1}/${totalCount.value}, 第${roundNumber.value}轮`)
-    
-    // 检查选择题是否有有效选项
-    const needsOptions = ['single-choice', 'multiple-choice', 'choice'].includes(res.data.question.type)
-    if (needsOptions) {
-      await nextTick()
-      if (options.value.length === 0) {
-        console.error('题目选项无效，自动跳过', res.data.question)
-        message.warning('题目数据有误，正在获取下一题...')
-        setTimeout(() => nextQuestion(), 1000)
-      }
+    // --- 新增：检测是否有进度，提示用户是否重置 ---
+    if (res.data.currentIndex > 0) {
+      dialog.warning({
+        title: '发现未完成的轮次',
+        content: `您在"${subject}"科目已完成 ${res.data.currentIndex}/${res.data.totalCount} 道题。是否继续练习，还是重置本轮从头开始？`,
+        positiveText: '继续练习',
+        negativeText: '重置本轮',
+        onPositiveClick: () => {
+          // 继续：直接应用当前状态
+          applyRoundState(res.data)
+        },
+        onNegativeClick: async () => {
+          // 重置：调用 resetRound API
+          try {
+            const resetRes = await resetRound(subject)
+            if (resetRes.data && resetRes.data.question) {
+              applyRoundState(resetRes.data)
+              roundResults.value = {} // 清空状态
+              zenTime.value = 0 // 重置计时器
+              message.success('已重置本轮，开始新的挑战！')
+            }
+          } catch (e) {
+            message.error('重置失败，请重试')
+          }
+        }
+      })
+      return
     }
+    // ------------------------------------------
+    
+    // 无进度或新轮次，直接应用
+    applyRoundState(res.data)
+    
   } catch (error) {
     console.error('获取题目失败:', error)
     message.error('获取题目失败')
+  }
+}
+
+// 辅助函数：应用轮次状态
+const applyRoundState = (data) => {
+  currentQuestion.value = data.question
+  currentIndex.value = data.currentIndex || 0
+  totalCount.value = data.totalCount || 0
+  roundNumber.value = data.roundNumber
+  isRoundFinished.value = data.isFinished
+  
+  practiceStore.setCurrentQuestion(data.question)
+  userAnswer.value = null
+  selectedAnswers.value = []
+  
+  addToHistory(data.question, data.currentIndex)
+  fetchRoundResults()
+  
+  console.log(`轮次进度: ${currentIndex.value + 1}/${totalCount.value}, 第${roundNumber.value}轮`)
+  
+  // 检查选择题是否有有效选项
+  const needsOptions = ['single-choice', 'multiple-choice', 'choice'].includes(data.question.type)
+  if (needsOptions) {
+    nextTick().then(() => {
+      if (options.value.length === 0) {
+        console.error('题目选项无效，自动跳过', data.question)
+        message.warning('题目数据有误，正在获取下一题...')
+        setTimeout(() => nextQuestion(), 1000)
+      }
+    })
   }
 }
 
@@ -759,20 +1024,55 @@ const submitAnswer = async () => {
     
     if (isCorrect.value) message.success('回答正确！')
     else message.error('回答错误！')
+    
+    // 提交后刷新答题卡状态
+    fetchRoundResults()
   } catch (error) {
     practiceStore.submitAnswer(userAnswer.value)
   }
 }
+// 手动重置本轮（从按钮触发）
+const handleResetRound = () => {
+  if (!currentSubject.value) {
+    message.warning('当前为随机模式，无法重置轮次')
+    return
+  }
+  
+  dialog.warning({
+    title: '确认重置本轮',
+    content: '重置后，当前轮次的所有进度将清空，答题卡将恢复为全白。确定要重置吗？',
+    positiveText: '确定重置',
+    negativeText: '取消',
+    onPositiveClick: async () => {
+      try {
+        const resetRes = await resetRound(currentSubject.value)
+        if (resetRes.data && resetRes.data.question) {
+          applyRoundState(resetRes.data)
+          roundResults.value = {} // 清空答题卡状态
+          zenTime.value = 0 // 重置计时器
+          practiceHistory.value = [] // 清空做题历史
+          historyIndex.value = -1
+          message.success('已重置本轮，轮次计数保持不变，加油再来一次！')
+        }
+      } catch (e) {
+        message.error('重置失败，请重试')
+      }
+    }
+  })
+}
 
 // 添加题目到做题历史
-const addToHistory = (question) => {
+const addToHistory = (question, rIndex = null) => {
   // 如果不在历史末尾，截断后面的历史（新分支）
   if (historyIndex.value < practiceHistory.value.length - 1) {
     practiceHistory.value = practiceHistory.value.slice(0, historyIndex.value + 1)
   }
+  // 如果未传入 rIndex，尝试使用当前 currentIndex
+  const idx = rIndex !== null ? rIndex : currentIndex.value
   practiceHistory.value.push({
     question: question,
-    userAnswer: null
+    userAnswer: null,
+    roundIndex: idx
   })
   historyIndex.value = practiceHistory.value.length - 1
 }
@@ -789,6 +1089,7 @@ const goToPrevQuestion = () => {
   
   // 恢复题目和已选答案
   currentQuestion.value = record.question
+  if (record.roundIndex !== undefined) currentIndex.value = record.roundIndex
   practiceStore.setCurrentQuestion(record.question)
   
   // 恢复用户之前的选择
@@ -818,6 +1119,7 @@ const goToNextHistoryQuestion = () => {
   
   // 恢复题目和已选答案
   currentQuestion.value = record.question
+  if (record.roundIndex !== undefined) currentIndex.value = record.roundIndex
   practiceStore.setCurrentQuestion(record.question)
   
   // 恢复用户之前的选择
@@ -868,7 +1170,7 @@ const nextQuestion = async () => {
       currentIndex.value = res.data.currentIndex
       totalCount.value = res.data.totalCount
       practiceStore.setCurrentQuestion(res.data.question)
-      addToHistory(res.data.question)
+      addToHistory(res.data.question, res.data.currentIndex)
       
     } catch (error) {
       console.error('获取下一题失败:', error)
@@ -886,6 +1188,9 @@ const nextQuestion = async () => {
   try {
     const res = await nextRoundQuestion(currentSubject.value)
     console.log('下一题响应:', res)
+    if (res.data && (res.data.totalCount || res.data.totalCount === 0)) {
+      totalCount.value = res.data.totalCount
+    }
     
     // 检查是否完成本轮
     if (res.data.isFinished && !res.data.question) {
@@ -893,11 +1198,11 @@ const nextQuestion = async () => {
       // 显示完成对话框
       dialog.success({
         title: '🎉 恭喜完成！',
-        content: `您已完成第 ${roundNumber.value} 轮练习，共 ${totalCount.value} 道题目！是否开始新一轮？`,
+        content: `您已完成第 ${roundNumber.value} 轮练习，共 ${totalCount.value} 道题目！即将进入第 ${roundNumber.value + 1} 轮，是否继续？`,
         positiveText: '开始新一轮',
         negativeText: '返回首页',
         onPositiveClick: async () => {
-          const resetRes = await resetRound(currentSubject.value)
+          const resetRes = await startRound(currentSubject.value)
           if (resetRes.data && resetRes.data.question) {
             currentQuestion.value = resetRes.data.question
             currentIndex.value = 0
@@ -922,7 +1227,7 @@ const nextQuestion = async () => {
       practiceStore.setCurrentQuestion(res.data.question)
       
       // 添加到做题历史
-      addToHistory(res.data.question)
+      addToHistory(res.data.question, res.data.currentIndex)
     } else {
       // 没有返回题目，可能是本轮已完成
       message.info('本轮已完成，请开始新一轮')
@@ -945,6 +1250,9 @@ const prevQuestion = async () => {
   try {
     const res = await prevRoundQuestion(currentSubject.value)
     console.log('上一题响应:', res)
+    if (res.data && (res.data.totalCount || res.data.totalCount === 0)) {
+      totalCount.value = res.data.totalCount
+    }
     
     if (res.data.question) {
       currentQuestion.value = res.data.question
@@ -1021,13 +1329,13 @@ const exitPractice = () => {
   --paper-bg: #fffdf7; /* 更亮、更干净的纸张色 */
   --shadow-hard: 4px 4px 0px rgba(0,0,0,0.15);
   
-  max-width: 850px; /* 缩小宽度，防止视觉疲劳 */
-  margin: 0 auto;
+  /* max-width: 850px; REMOVED for global scroll */
+  width: 100%;
+  margin: 0;
   min-height: 100vh;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  padding: 16px;
+  display: block; /* changed from flex center to block for scrollbar */
+  padding: 0;
+  overflow: hidden;
   
   /* 核心背景风格：点阵纸张 - 更淡雅 */
   background-color: var(--paper-bg);
@@ -1437,11 +1745,7 @@ const exitPractice = () => {
 /* === NEW STYLES for Full Screen + Doodles === */
 
 /* 1. Reset Container to Full Screen */
-/* 1. Reset Container to Full Screen */
 .practice-container {
-  --paper-bg: #fffdf7; /* Creamy paper for the center card */
-  --desk-bg: #f1f5f9;  /* Slate-100 for the desk */
-  
   width: 100%;
   min-height: 100vh;
   position: relative;
@@ -1449,18 +1753,14 @@ const exitPractice = () => {
   
   display: flex;
   justify-content: center;
-  align-items: center; /* Vertically center the content */
+  align-items: flex-start; /* Align top for better scrolling */
   padding: 16px;
   
-  /* Candy Stripe Background (Neo-Brutalist Layout) */
-  background-color: #fff;
-  background-image: repeating-linear-gradient(
-    45deg,
-    #fff,
-    #fff 40px,
-    #ffe4e6 40px, /* Rose-100 */
-    #ffe4e6 80px
-  );
+  /* Transparent background to show Layout's industrial dot matrix */
+  background: transparent;
+  
+  /* Core variables */
+  --paper-bg: #fffdf7;
   
   font-family: 'Patrick Hand', cursive;
   color: #2c3e50;
@@ -1494,31 +1794,40 @@ const exitPractice = () => {
   position: relative;
   z-index: 1; /* Above doodles */
   width: 100%;
-  max-width: 850px;
-  /* Flex item behavior */
+  max-width: 1400px; /* Expanded for 3 columns */
   display: flex;
   justify-content: center;
+  padding: 0 16px;
+}
+.content-wrapper.has-question {
+  align-items: flex-start;
 }
 
-/* Ensure the cards take up space properly inside wrapper */
-.filter-panel, .question-wrapper {
-  width: 100%;
-  /* Max-widths are already handled by internal classes, 
-     but we ensure they center inside content-wrapper */
-}
-
-/* Re-verify filter panel centering */
+/* Filter panel stays centered */
 .filter-panel { 
+  width: 100%;
   max-width: 480px; 
-  margin: 0 auto;
+  margin: auto; /* Vertically center in flex column */
 }
 
+/* Practice Layout (Grid/Flex for 3 cols) */
+.practice-main-layout {
+  display: flex;
+  gap: 24px;
+  width: 100%;
+  justify-content: center;
+  align-items: flex-start;
+  min-width: 0; /* 防止 flex 溢出问题 */
+}
+
+/* Adjust question wrapper for layout */
 .question-wrapper {
+  width: 100%;
   max-width: 760px;
-  margin: 0 auto;
+  flex: 1; /* Allow it to fill available space */
+  flex-shrink: 1; /* Allow shrinking */
+  min-width: 0; /* Prevent overflow */
 }
-
-
 
 .action-btn:hover {
   transform: translate(-1px, -1px) rotate(-1deg);
@@ -1580,4 +1889,385 @@ const exitPractice = () => {
 .slide-up-enter-from { opacity: 0; transform: translateY(30px) rotate(3deg); }
 .fade-leave-active { transition: opacity 0.2s; }
 .fade-leave-to { opacity: 0; }
+
+/* === Side Panel Styles === */
+.side-panel {
+  width: 280px; /* Increased from default */
+  background: #fffdf7; /* Creamy paper bg */
+  border: 2px solid #2c3e50;
+  border-radius: 255px 15px 225px 15px / 15px 225px 15px 255px;
+  padding: 24px;
+  position: sticky;
+  top: 0;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  
+  /* Premium Shadow Effect */
+  box-shadow: 
+    0 4px 6px rgba(0,0,0,0.02),
+    4px 4px 0 rgba(44, 62, 80, 0.9); /* Solid shadow for comic look */
+  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+
+.side-panel:hover {
+  transform: translateY(-4px) rotate(1deg);
+  box-shadow: 6px 6px 0 rgba(44, 62, 80, 0.9);
+}
+
+.side-header {
+  font-family: 'Gochi Hand', cursive;
+  font-size: 24px;
+  color: #2c3e50;
+  border-bottom: 2px dashed #cbd5e1;
+  padding-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.side-content {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* Left Panel Specifics */
+.subject-card {
+  background: #f8fafc;
+  padding: 16px;
+  border-radius: 12px;
+  border: 2px solid #e2e8f0;
+  transition: all 0.2s;
+}
+.subject-card:hover { border-color: #94a3b8; }
+
+.subject-label { font-size: 14px; color: #64748b; margin-bottom: 4px; font-weight: 600; }
+.subject-title { font-weight: 800; font-size: 20px; color: #334155; line-height: 1.3; font-family: 'Gochi Hand', cursive; }
+
+.stat-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.stat-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background: #fff;
+  border: 2px solid #2c3e50;
+  border-radius: 12px;
+  padding: 12px 8px;
+  box-shadow: 2px 2px 0 rgba(0,0,0,0.1);
+  transition: transform 0.2s;
+}
+.stat-item:hover { transform: translateY(-2px); }
+
+.stat-val { font-size: 28px; font-weight: 700; font-family: 'Gochi Hand', cursive; color: #2c3e50; line-height: 1; }
+.stat-label { font-size: 13px; color: #64748b; margin-top: 4px; font-weight: 600; }
+
+.mode-tag {
+  background: #fee2e2;
+  color: #ef4444;
+  text-align: center;
+  padding: 6px;
+  border-radius: 20px;
+  font-size: 14px;
+  font-weight: 700;
+  border: 2px solid #ef4444;
+  box-shadow: 2px 2px 0 rgba(239, 68, 68, 0.2);
+}
+
+/* Right Panel specific */
+.sheet-info { text-align: right; font-size: 14px; color: #64748b; margin-bottom: 12px; font-weight: 600; }
+.bubble-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 10px;
+}
+.bubble {
+  aspect-ratio: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid #cbd5e1;
+  border-radius: 50%;
+  font-size: 14px;
+  color: #64748b;
+  cursor: default;
+  transition: all 0.2s;
+  font-family: 'Fredoka One', cursive, sans-serif;
+  background: #fff;
+}
+.bubble.done {
+  background: #e2e8f0;
+  border-color: #94a3b8;
+  color: #475569;
+}
+.bubble.active {
+  border-color: #2c3e50;
+  background: #2c3e50;
+  color: #fff;
+  box-shadow: 3px 3px 0 rgba(0,0,0,0.2);
+  transform: scale(1.15);
+  font-weight: bold;
+}
+.empty-sheet {
+  text-align: center; color: #94a3b8; padding: 20px 0; font-style: italic;
+}
+.side-footer { margin-top: auto; display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+
+.reset-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 12px;
+  border-radius: 8px;
+  background: #fff8e1; /* Soft yellow background matching theme */
+  border: 1px dashed #f59e0b; /* Amber dashed border */
+  color: #d97706;
+  font-family: 'Gochi Hand', cursive;
+  font-size: 15px;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1);
+  box-shadow: 2px 2px 0 rgba(245, 158, 11, 0.2);
+}
+
+.reset-wrapper:hover {
+  transform: translateY(-2px) rotate(1deg);
+  background: #fffbeb;
+  box-shadow: 3px 3px 0 rgba(245, 158, 11, 0.3);
+}
+
+.reset-wrapper:active {
+  transform: translateY(1px);
+  box-shadow: 1px 1px 0 rgba(245, 158, 11, 0.2);
+}
+
+.reset-icon { font-size: 16px; }
+
+/* Responsive adjustments */
+@media (max-width: 1200px) {
+  .side-panel { display: none; } /* 仅在小屏幕下隐藏 */
+  .question-wrapper { width: 100%; max-width: 800px; margin: 0 auto; }
+}
+
+@media (min-width: 1201px) and (max-width: 1350px) {
+  /* 中等屏幕：稍微缩小侧边栏和间距 */
+  .side-panel { width: 220px; padding: 16px; }
+  .practice-main-layout { gap: 16px; }
+  .question-wrapper { max-width: 680px; }
+  .stat-val { font-size: 22px; }
+}
+
+
+/* Scrollbar & Layout Container Fixes - Appended */
+.practice-container {
+  width: 100%;
+  height: 100vh;
+  overflow: hidden;
+  background: var(--paper-bg);
+  position: relative;
+}
+
+.global-scrollbar {
+  height: 100%;
+}
+
+
+:deep(.practice-layout-container) {
+  min-height: 100%;
+  position: relative;
+  display: flex;
+  box-sizing: border-box;
+  padding: 40px 16px;
+  justify-content: center;
+  align-items: flex-start;
+  width: 100%;
+  gap: 24px;
+}
+
+
+
+/* Practice Layout (Content inside scrollbar) */
+.practice-main-layout {
+  min-width: 0;
+  max-width: 1400px; /* Re-added centering constraint */
+  margin: 0 auto;    /* Re-added centering constraint */
+}
+
+/* Zen card & Answer Sheet Enhancements - Appended */
+.zen-card {
+  margin-top: 16px;
+  background: linear-gradient(135deg, rgba(255,255,255,0.7) 0%, rgba(240,249,255,0.7) 100%);
+}
+
+.zen-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.zen-title {
+  font-size: 16px;
+  font-weight: 800;
+  color: #2c3e50;
+  font-family: 'Inter', sans-serif;
+}
+
+.zen-status {
+  font-size: 12px;
+  color: #10b981;
+  background: #ecfdf5;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-weight: 600;
+}
+
+.zen-content {
+  text-align: center;
+  padding: 8px 0;
+}
+
+.zen-timer {
+  font-size: 28px;
+  font-weight: 800;
+  color: #1e293b;
+  font-family: 'Fredoka One', cursive, sans-serif;
+  margin-bottom: 16px;
+}
+
+.zen-breath-wrapper {
+  height: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 16px;
+}
+
+.zen-breath-circle {
+  width: 20px;
+  height: 20px;
+  background: #3b82f6;
+  border-radius: 50%;
+  animation: breathe 4s ease-in-out infinite;
+  box-shadow: 0 0 15px rgba(59, 130, 246, 0.4);
+}
+
+@keyframes breathe {
+  0%, 100% { transform: scale(1); opacity: 0.5; box-shadow: 0 0 5px rgba(59, 130, 246, 0.2); }
+  50% { transform: scale(2.5); opacity: 0.8; box-shadow: 0 0 20px rgba(59, 130, 246, 0.5); }
+}
+
+.zen-quote {
+  font-size: 13px;
+  color: #64748b;
+  font-style: italic;
+  line-height: 1.5;
+  min-height: 40px;
+}
+
+/* 禅意专注 - 防走神动画 */
+.zen-title.text-danger { color: #f87171 !important; font-weight: bold; font-family: 'Gochi Hand', cursive; }
+.zen-status.status-danger {
+  background: #fecaca; color: #b91c1c; border-color: #f87171;
+  animation: pulse-danger 1s infinite;
+}
+.zen-timer.blur-text { font-size: 28px; color: #ef4444; font-weight: bold; }
+.zen-breath-circle.circle-danger {
+  background: #ef4444;
+  box-shadow: 0 0 20px rgba(239, 68, 68, 0.4);
+  animation: shake-hard 0.5s infinite;
+}
+
+@keyframes shake-hard {
+  0% { transform: translate(1px, 1px) rotate(0deg); }
+  10% { transform: translate(-1px, -2px) rotate(-1deg); }
+  20% { transform: translate(-3px, 0px) rotate(1deg); }
+  30% { transform: translate(3px, 2px) rotate(0deg); }
+  40% { transform: translate(1px, -1px) rotate(1deg); }
+  50% { transform: translate(-1px, 2px) rotate(-1deg); }
+  60% { transform: translate(-3px, 1px) rotate(0deg); }
+  70% { transform: translate(3px, 1px) rotate(-1deg); }
+  80% { transform: translate(-1px, -1px) rotate(1deg); }
+  90% { transform: translate(1px, 2px) rotate(0deg); }
+  100% { transform: translate(1px, -2px) rotate(-1deg); }
+}
+
+@keyframes pulse-danger {
+  0% { transform: scale(1); box-shadow: 0 0 10px rgba(239, 68, 68, 0.5); }
+  50% { transform: scale(1.05); box-shadow: 0 0 30px rgba(239, 68, 68, 0.8); }
+  100% { transform: scale(1); box-shadow: 0 0 10px rgba(239, 68, 68, 0.5); }
+}
+
+.distracted-shake {
+  /* Vivid Red Warning Style */
+  border: 4px solid #ef4444 !important;
+  background: #fecaca !important; /* Soft Red Background */
+  transform: rotate(-2deg);
+  box-shadow: 0 0 50px rgba(239, 68, 68, 0.6) !important;
+  transition: all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1);
+  animation: shake-hard 0.6s infinite; /* Continuous shaking */
+}
+/* Ensure text contrasts well with red bg */
+.distracted-shake .zen-title, 
+.distracted-shake .zen-timer,
+.distracted-shake .zen-quote {
+  color: #b91c1c !important; /* Dark Red Text */
+  text-shadow: 1px 1px 0px rgba(255,255,255,0.5);
+}
+
+/* Bubble Statuses */
+.bubble {
+  cursor: pointer !important;
+  font-weight: 600;
+  user-select: none;
+}
+
+.bubble:hover {
+  transform: scale(1.1);
+  border-color: #3b82f6;
+}
+
+.bubble.correct {
+  background: #dcfce7 !important;
+  border-color: #22c55e !important;
+  color: #15803d !important;
+}
+
+.bubble.wrong {
+  background: #fee2e2 !important;
+  border-color: #ef4444 !important;
+  color: #b91c1c !important;
+}
+
+.bubble.active {
+  background: #1e293b !important;
+  border-color: #1e293b !important;
+  color: #fff !important;
+  transform: scale(1.1);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+/* Pagination */
+.sheet-pagination {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 12px;
+  margin-top: 20px;
+  padding-top: 12px;
+  border-top: 1px dashed #e2e8f0;
+}
+
+.page-num {
+  font-size: 13px;
+  font-weight: 700;
+  color: #64748b;
+  min-width: 40px;
+  text-align: center;
+}
+
 </style>

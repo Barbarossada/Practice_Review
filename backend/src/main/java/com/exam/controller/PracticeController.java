@@ -97,6 +97,24 @@ public class PracticeController {
         // 设置用户ID（数据隔离关键）
         record.setUserId(userId);
 
+        // --- 新增：关联当前轮次 ---
+        try {
+            // 获取当前题目的科目
+            String subject = question.getSubject();
+            if (subject != null) {
+                PracticeRound currentRound = practiceRoundService.getProgress(userId, subject);
+                if (currentRound != null) {
+                    record.setRoundNumber(currentRound.getRoundNumber());
+                } else {
+                    record.setRoundNumber(1); // 默认第一轮
+                }
+            }
+        } catch (Exception e) {
+            // 容错处理，避免影响提交
+            record.setRoundNumber(1);
+        }
+        // ------------------------
+
         // 保存练习记录
         practiceRecordService.save(record);
 
@@ -514,6 +532,45 @@ public class PracticeController {
         result.put("message", "已开始第 " + progress.getRoundNumber() + " 轮练习");
         
         return Result.success(result);
+    }
+
+    /**
+     * 跳转到指定索引的题目
+     * 
+     * @param subject 科目名称
+     * @param index 索引位置
+     * @return 对应的题目信息
+     */
+    @GetMapping("/round/jump")
+    public Result<Map<String, Object>> jumpRoundQuestion(@RequestParam String subject, @RequestParam int index) {
+        Long userId = getCurrentUserId();
+        
+        Question question = practiceRoundService.jumpToIndex(userId, subject, index);
+        if (question == null) {
+            return Result.error("跳转失败，索引超出范围或题目不存在");
+        }
+        
+        PracticeRound progress = practiceRoundService.getProgress(userId, subject);
+        
+        Map<String, Object> result = new HashMap<>();
+        result.put("question", question);
+        result.put("currentIndex", progress.getCurrentIndex());
+        result.put("totalCount", progress.getTotalCount());
+        result.put("isFinished", progress.getIsFinished());
+        
+        return Result.success(result);
+    }
+
+    /**
+     * 获取当前轮次所有题目的答题状态
+     * 
+     * @param subject 科目名称
+     * @return 状态映射（索引 -> 状态: 0-未做, 1-正确, 2-错误）
+     */
+    @GetMapping("/round/results")
+    public Result<Map<Integer, Integer>> getRoundResults(@RequestParam String subject) {
+        Long userId = getCurrentUserId();
+        return Result.success(practiceRoundService.getRoundResults(userId, subject));
     }
 
     // ==================== 搜索 API ====================

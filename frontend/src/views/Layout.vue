@@ -33,6 +33,41 @@
         @update:value="handleMenuSelect"
         class="custom-menu"
       />
+
+      <!-- Cyber Status Widget (Bottom Filler) -->
+      <transition name="fade">
+        <div v-if="!collapsed" class="status-widget">
+          <div class="widget-header">
+             <n-icon :component="HardwareChipOutline" />
+             <span>SYSTEM_DIAGNOSTICS</span>
+          </div>
+          
+          <div class="widget-body">
+             <div class="stat-row">
+               <span class="stat-label">CPU_LOAD</span>
+               <div class="cyber-progress">
+                 <div class="cyber-bar" :style="{ width: cpuLoad + '%' }"></div>
+               </div>
+               <span class="stat-val">{{ cpuLoad }}%</span>
+             </div>
+             
+             <div class="stat-row">
+               <span class="stat-label">SYNC_RATE</span>
+               <div class="cyber-progress">
+                 <div class="cyber-bar" :style="{ width: syncRate + '%', background: 'var(--neon-magenta)' }"></div>
+               </div>
+               <span class="stat-val">{{ syncRate }}%</span>
+             </div>
+          </div>
+
+          <div class="widget-footer">
+             <button class="cyber-btn" @click="triggerBoost">
+               <n-icon :component="FlashOutline" :class="{ 'spinning': isBoosting }" />
+               <span>{{ isBoosting ? 'OPTIMIZING...' : 'INJECT_ENERGY' }}</span>
+             </button>
+          </div>
+        </div>
+      </transition>
     </n-layout-sider>
 
     <!-- Mobile Drawer Sidebar -->
@@ -82,6 +117,22 @@
               </transition>
             </div>
           </n-space>
+
+          <!-- Middle Fun/Interactive Zone -->
+          <div class="header-center desktop-only">
+             <div class="fun-text-container">
+               <span class="fun-text">✨ Code with Flow</span>
+             </div>
+             <n-divider vertical />
+             <n-switch :value="isEffectsEnabled" @update:value="toggleEffects" size="medium">
+                <template #checked-icon>
+                  <n-icon :component="SparklesOutline" color="#EAB308" />
+                </template>
+                <template #unchecked-icon>
+                  <n-icon :component="SparklesOutline" color="#9CA3AF" />
+                </template>
+             </n-switch>
+          </div>
 
           <n-space align="center" :size="24">
             <!-- Quick Actions -->
@@ -217,7 +268,7 @@ import { useRouter, useRoute } from 'vue-router'
 import { useMessage } from 'naive-ui'
 import { 
   NLayout, NLayoutSider, NLayoutHeader, NLayoutContent, NDrawer, NDrawerContent,
-  NMenu, NSpace, NText, NTag, NIcon, NAvatar, NDropdown, NButton, NPopover, NBadge, NEmpty, NModal, NInput
+  NMenu, NSpace, NText, NTag, NIcon, NAvatar, NDropdown, NButton, NPopover, NBadge, NEmpty, NModal, NInput, NSwitch, NDivider
 } from 'naive-ui'
 import {
   HomeOutline,
@@ -236,9 +287,14 @@ import {
   NotificationsOutline,
   InformationCircleOutline,
   AlertCircleOutline,
-  TrophyOutline
+  TrophyOutline,
+  SparklesOutline,
+  FlashOutline,
+  PulseOutline,
+  HardwareChipOutline
 } from '@vicons/ionicons5'
 import { useUserStore } from '@/stores/user'
+import { isEffectsEnabled, toggleEffects } from '@/utils/mouseEffects'
 
 const router = useRouter()
 const route = useRoute()
@@ -385,6 +441,41 @@ const readNotification = (item) => {
     router.push('/wrong-book')
   }
 }
+// === Cyber Status Widget Logic ===
+const cpuLoad = ref(42)
+const syncRate = ref(98)
+const isBoosting = ref(false)
+
+// Simulating Fluctuations
+setInterval(() => {
+  if (!isBoosting.value) {
+    cpuLoad.value = Math.max(20, Math.min(80, cpuLoad.value + Math.floor(Math.random() * 10) - 5))
+    syncRate.value = Math.max(90, Math.min(100, syncRate.value + Math.floor(Math.random() * 3) - 1))
+  }
+}, 2000)
+
+const triggerBoost = () => {
+    if (isBoosting.value) return
+    isBoosting.value = true
+    message.loading('Optimizing Neural Link...', { duration: 1500 })
+    
+    // Simulate Boost
+    let interval = setInterval(() => {
+        cpuLoad.value = Math.floor(Math.random() * 100)
+        syncRate.value = Math.floor(Math.random() * 100)
+    }, 100)
+    
+    setTimeout(() => {
+        clearInterval(interval)
+        cpuLoad.value = 12
+        syncRate.value = 100
+        isBoosting.value = false
+        message.success('System Optimized: Efficiency +200%')
+        
+        // Trigger generic confetti if available (window.confetti) or just message
+        // Since we don't have a confetti lib ready, the message is enough feedback for now
+    }, 2000)
+}
 </script>
 
 <style scoped>
@@ -412,11 +503,97 @@ const readNotification = (item) => {
 }
 
 /* === SIDEBAR (CONTROL PANEL) === */
+.desktop-sider :deep(.n-layout-sider-scroll-container) {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+}
+
 .desktop-sider {
   background: var(--off-white);
   border-right: 4px solid var(--void-black) !important;
   z-index: 50;
 }
+
+/* Cyber Status Widget */
+.status-widget {
+  margin-top: 12px; /* Follows menu closely */
+  margin-bottom: 24px;
+  margin-left: 12px;
+  margin-right: 12px;
+  border: 2px solid var(--void-black);
+  background: white;
+  box-shadow: 4px 4px 0 var(--void-black);
+  padding: 12px;
+  font-family: 'Courier New', Courier, monospace;
+}
+
+.widget-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 900;
+  font-size: 12px;
+  border-bottom: 2px solid var(--void-black);
+  padding-bottom: 8px;
+  margin-bottom: 12px;
+  color: var(--void-black);
+}
+
+.stat-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+  font-size: 10px;
+  font-weight: bold;
+}
+
+.stat-label { width: 60px; }
+
+.cyber-progress {
+  flex: 1;
+  height: 8px;
+  background: #eee;
+  border: 1px solid var(--void-black);
+  position: relative;
+}
+
+.cyber-bar {
+  height: 100%;
+  background: var(--neon-cyan);
+  transition: width 0.5s ease;
+}
+
+.stat-val { width: 30px; text-align: right; }
+
+.cyber-btn {
+  width: 100%;
+  background: var(--void-black);
+  color: var(--neon-yellow);
+  border: none;
+  padding: 8px;
+  font-family: inherit;
+  font-weight: bold;
+  font-size: 12px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 8px;
+  transition: all 0.1s;
+}
+
+.cyber-btn:hover {
+  background: var(--neon-magenta);
+  color: white;
+  transform: translate(-1px, -1px);
+  box-shadow: 2px 2px 0 rgba(0,0,0,0.2);
+}
+
+.spinning { animation: spin 1s linear infinite; }
+@keyframes spin { 100% { transform: rotate(360deg); } }
 
 /* Logo Area */
 .logo-container {
@@ -577,6 +754,33 @@ const readNotification = (item) => {
   height: 24px;
   background: var(--void-black);
   transform: rotate(15deg);
+}
+
+.header-center {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  background: rgba(245, 245, 245, 0.5);
+  padding: 6px 16px;
+  border-radius: 20px;
+  border: 1px dashed var(--void-black);
+}
+
+.fun-text {
+  font-family: 'Gochi Hand', cursive;
+  font-weight: bold;
+  font-size: 16px;
+  background: linear-gradient(90deg, #FF3EA5, #00E5FF);
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: float 3s ease-in-out infinite;
+}
+
+@keyframes float {
+  0% { transform: translateY(0px); }
+  50% { transform: translateY(-3px); }
+  100% { transform: translateY(0px); }
 }
 
 .admin-link {

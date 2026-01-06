@@ -29,6 +29,9 @@ public class PracticeRoundServiceImpl extends ServiceImpl<PracticeRoundMapper, P
 
     @Autowired
     private QuestionService questionService;
+    
+    @Autowired
+    private com.exam.mapper.PracticeRecordMapper practiceRecordMapper;
 
     @Override
     @Transactional
@@ -191,7 +194,8 @@ public class PracticeRoundServiceImpl extends ServiceImpl<PracticeRoundMapper, P
         log.info("重置轮次: userId={}, subject={}", userId, subject);
         
         PracticeRound existing = baseMapper.selectByUserAndSubject(userId, subject);
-        int nextRoundNumber = existing == null ? 1 : existing.getRoundNumber() + 1;
+        // 重置通常意味着重新在这个轮次练习，所以不应该增加轮次号
+        int nextRoundNumber = existing == null ? 1 : existing.getRoundNumber();
         
         PracticeRound newRound = createNewRound(userId, subject, nextRoundNumber);
         if (newRound != null && !newRound.getQuestionIds().isEmpty()) {
@@ -199,5 +203,40 @@ public class PracticeRoundServiceImpl extends ServiceImpl<PracticeRoundMapper, P
             return questionService.getById(questionId);
         }
         return null;
+    }
+
+    @Override
+    public java.util.Map<Integer, Integer> getRoundResults(Long userId, String subject) {
+        PracticeRound round = baseMapper.selectByUserAndSubject(userId, subject);
+        if (round == null || round.getQuestionIds() == null) {
+            return Collections.emptyMap();
+        }
+
+        List<Long> questionIds = round.getQuestionIds();
+        java.util.Map<Integer, Integer> results = new java.util.HashMap<>();
+
+        // 查询这些题目的练习记录
+        // 状态定义: 0-未做, 1-正确, 2-错误
+        for (int i = 0; i < questionIds.size(); i++) {
+            Long qid = questionIds.get(i);
+            
+            // 优先检查是否有针对该题目的正确记录（必须是当前轮次的）
+            LambdaQueryWrapper<com.exam.entity.PracticeRecord> recordWrapper = new LambdaQueryWrapper<>();
+            recordWrapper.eq(com.exam.entity.PracticeRecord::getUserId, userId)
+                         .eq(com.exam.entity.PracticeRecord::getQuestionId, qid)
+                         .eq(com.exam.entity.PracticeRecord::getRoundNumber, round.getRoundNumber()) // 关键修改：只查当前轮次
+                         .orderByDesc(com.exam.entity.PracticeRecord::getPracticeTime)
+                         .last("LIMIT 1");
+            
+            com.exam.entity.PracticeRecord latestRecord = practiceRecordMapper.selectOne(recordWrapper);
+            
+            if (latestRecord == null) {
+                results.put(i, 0);
+            } else {
+                results.put(i, latestRecord.getIsCorrect() ? 1 : 2);
+            }
+        }
+
+        return results;
     }
 }

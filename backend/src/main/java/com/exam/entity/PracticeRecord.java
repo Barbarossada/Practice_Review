@@ -45,4 +45,9 @@ public class PracticeRecord {
      */
     @TableField(fill = FieldFill.INSERT)
     private LocalDateTime practiceTime;
+
+    /**
+     * 轮次编号
+     */
+    private Integer roundNumber;
 }

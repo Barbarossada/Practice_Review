@@ -11,9 +11,10 @@
 </template>
 
 <script setup>
-import { h, defineComponent } from 'vue'
+import { h, defineComponent, onMounted } from 'vue'
 import { RouterView } from 'vue-router'
 import { NConfigProvider, NMessageProvider, NDialogProvider, NNotificationProvider, useMessage } from 'naive-ui'
+import { initMouseEffects } from '@/utils/mouseEffects'
 
 // 全局 Provider 组件，用于暴露 message 到 window
 const GlobalProvider = defineComponent({
@@ -21,6 +22,12 @@ const GlobalProvider = defineComponent({
   setup() {
     // 将 message 暴露到 window，供 request.js 使用
     window.$message = useMessage()
+    
+    // 初始化全局鼠标特效
+    onMounted(() => {
+      initMouseEffects()
+    })
+    
     return () => h(RouterView)
   }
 })
@@ -87,5 +94,18 @@ body {
 }
 ::-webkit-scrollbar-track {
   background: transparent;
+}
+
+/* Global Mouse Effect Canvas Styles - Force Top Layer */
+canvas:not([data-zr-dom-id]),
+.js-cursor-container {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  z-index: 2147483647 !important; /* Max Z-Index to ensure it's on top of EVERYTHING */
+  pointer-events: none !important; /* Allow clicks to pass through */
+  display: block !important;
 }
 </style>
